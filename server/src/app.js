@@ -127,23 +127,27 @@ export function createApp({
   });
 
   api.get('/chain', (req, res) => res.json(chainView(wsOf(req, res))));
-  api.put('/chain', (req, res) => { const ws = wsOf(req, res); ws.configure(validateConfig(req.body)); res.json(chainView(ws)); });
+  // A request that will be refused (400, 404) is validated BEFORE the workspace is touched, so it never creates one or evicts another.
+  api.put('/chain', (req, res) => { workspaceFrom(req); const config = validateConfig(req.body); const ws = wsOf(req, res); ws.configure(config); res.json(chainView(ws)); });
 
   api.post('/run', (req, res) => {
-    const ws = wsOf(req, res);
+    const id = workspaceFrom(req);
     onlyKeys(req.body, ['prompt', 'providerStates'], 'the run request');
     validatePrompt(req.body.prompt);
+    // the states are checked against the chain the workspace has (a workspace that does not exist yet starts with the default chain), without creating it
+    validateProviderStates(req.body.providerStates, workspaces.peek(id)?.key().entries.length ?? DEFAULT_CHAIN.length);
+    const ws = wsOf(req, res);
     const key = ws.key();
-    validateProviderStates(req.body.providerStates, key.entries.length);
     const result = runFallback(key, req.body.prompt, ws.clock(), { providerStates: req.body.providerStates });
     res.json({ ...result, clockMs: ws.clock().now(), ...recordRun(ws, { kind: 'live', prompt: req.body.prompt, result }) });
   });
 
   api.get('/scenarios', (_req, res) => res.json({ scenarios: SCENARIOS.map(({ id, title, summary, chain, timeoutMs, providerStates, preSpend, prompt, expect }) => ({ id, title, summary, chain, timeoutMs, providerStates, preSpend, prompt, expect })) }));
   api.post('/scenario/:id', (req, res) => {
-    const ws = wsOf(req, res);
+    workspaceFrom(req);
     const sc = scenarioById(req.params.id);
     if (!sc) throw refuse('unknown_scenario', 'no scenario with that id', 404);
+    const ws = wsOf(req, res);
     const out = runScenario(sc.id);
     res.json({ ...out, ...recordRun(ws, { kind: 'scenario', scenarioId: sc.id, prompt: sc.prompt, result: out.result }) });
   });

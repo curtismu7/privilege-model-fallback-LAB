@@ -98,3 +98,37 @@ test('a wrong method with a bad body is a 405, not a 400 about the body (the 405
     assert.equal((await lab.send('POST', '/api/run', '{not json')).json.error, 'bad_json', 'an accepted method still gets the body error');
   } finally { await lab.close(); }
 });
+
+test('a request that will be refused (400 or 404) creates nothing and evicts nothing: it is validated before the workspace is touched', async () => {
+  const lab = await startLab();
+  try {
+    const w = (id) => ({ 'x-workspace': id });
+    for (let i = 0; i < MAX_WORKSPACES; i++) await lab.get('/api/chain', w(`keep-${i}`)); // the workspaces are full
+    const refused = [
+      await lab.send('POST', '/api/run', { prompt: '' }, w('newcomer')),
+      await lab.send('POST', '/api/run', { prompt: 'hello there', providerStates: ['nope'] }, w('newcomer')),
+      await lab.send('POST', '/api/run', { prompt: 'hello there', providerStates: ['healthy', 'healthy', 'healthy'] }, w('newcomer')),
+      await lab.send('POST', '/api/run', { prompt: 'hello there', apiKey: 'x' }, w('newcomer')),
+      await lab.send('PUT', '/api/chain', { chain: [] }, w('newcomer')),
+      await lab.send('PUT', '/api/chain', { chain: [{ provider: 'provider-a', model: 'bad model!', budgetTokens: 1 }] }, w('newcomer')),
+      await lab.send('POST', '/api/scenario/no-such-scenario', {}, w('newcomer')),
+      await lab.send('POST', '/api/run', { prompt: 'hello there' }, w('Bad Id')),
+    ];
+    assert.deepEqual(refused.map((r) => r.status), [400, 400, 400, 400, 400, 400, 404, 400]);
+    for (const r of refused) assert.equal(r.headers.get('x-workspace-fresh'), null, 'a refused request says nothing about the workspace');
+    for (let i = 0; i < MAX_WORKSPACES; i++) assert.equal((await lab.get('/api/chain', w(`keep-${i}`))).headers.get('x-workspace-fresh'), '0', `keep-${i} was not evicted by a refused request`);
+    assert.equal((await lab.get('/api/chain', w('newcomer'))).headers.get('x-workspace-fresh'), '1', 'the refused requests never created it');
+  } finally { await lab.close(); }
+});
+
+test('the run states are still checked against the workspace\'s own chain length (a one-model workspace refuses two states), without creating anything', async () => {
+  const lab = await startLab();
+  try {
+    const w = { 'x-workspace': 'solo' };
+    await lab.send('PUT', '/api/chain', { chain: chain1 }, w);
+    const r = await lab.send('POST', '/api/run', { prompt: 'hello there', providerStates: ['healthy', 'healthy'] }, w);
+    assert.deepEqual([r.status, r.json.error], [400, 'bad_provider_states']);
+    assert.equal((await lab.send('POST', '/api/run', { prompt: 'hello there', providerStates: ['healthy'] }, w)).status, 200);
+    assert.equal((await lab.send('POST', '/api/run', { prompt: 'hello there', providerStates: ['healthy', 'down'] }, { 'x-workspace': 'brand-new' })).status, 200, 'a new workspace starts with the default two-model chain');
+  } finally { await lab.close(); }
+});

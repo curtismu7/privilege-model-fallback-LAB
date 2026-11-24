@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { STORIES, scanStories, buildStories } from '../src/stories.js';
 import { VERTICALS, CAST_KEYS, tokensIn, unfilled, castFor } from '../src/cast.js';
 import { loadTalkTrack, buildTalkTrack } from '../src/talkTrack.js';
-import { validateConfig, castForVertical, loadCustomerConfig, publicConfig } from '../src/customer.js';
+import { validateConfig, castForVertical, loadCustomerConfig, logCustomerWarnings, publicConfig } from '../src/customer.js';
 import { SCENARIOS, runScenario } from '../src/scenarios.js';
 import { startLab } from './helpers.js';
 
@@ -83,4 +83,24 @@ test('GET /api/story: the vertical picker, the configured brand on its own verti
     assert.deepEqual([bad.status, bad.json.error], [400, 'unknown_vertical']);
     assert.equal((await lab.send('POST', '/api/story', {})).status, 405);
   } finally { await lab.close(); }
+});
+
+test('a bad customer.config field is never silent: each warning is logged at start-up with the key sanitised, and /api/story carries them (and the tagline) for the page', async () => {
+  const customer = validateConfig({ tagline: '<b>x</b>', name: 'Ok Name', vertical: 'mining', 'bad\nkey': 1, cast: { app: 'see https://evil.example' } });
+  assert.ok(customer.warnings.length >= 4, customer.warnings.join('; '));
+  const lines = [];
+  assert.equal(logCustomerWarnings(customer, (l) => lines.push(l), '[t]'), customer.warnings.length);
+  assert.equal(lines.length, customer.warnings.length);
+  for (const l of lines) { assert.match(l, /^\[t\] customer\.config: /); assert.ok(!/[\r\n]/.test(l), 'one line per warning'); }
+  assert.equal(logCustomerWarnings(validateConfig({}), () => assert.fail('nothing to log')), 0);
+  const lab = await startLab({ customer });
+  try {
+    const story = (await lab.get('/api/story')).json;
+    assert.deepEqual(story.warnings, customer.warnings);
+    assert.equal(story.tagline, 'An LLM key names a second model that answers when the first cannot.', 'a bad tagline falls back to the default, which is what the page shows');
+    assert.equal(story.name, 'Ok Name');
+  } finally { await lab.close(); }
+  const good = validateConfig({ tagline: 'Fallback, in plain words' });
+  const lab2 = await startLab({ customer: good });
+  try { assert.equal((await lab2.get('/api/story')).json.tagline, 'Fallback, in plain words'); } finally { await lab2.close(); }
 });

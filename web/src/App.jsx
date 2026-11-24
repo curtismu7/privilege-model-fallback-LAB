@@ -51,8 +51,8 @@ export default function App() {
   const [forgotten, setForgotten] = useState(false);
 
   // The server forgot this tab's workspace (a restart, or more than 20 workspaces): say so plainly and read the key and state again.
-  const { resync } = lab;
-  useEffect(() => { const on = () => { setForgotten(true); resync(); }; window.addEventListener(FORGOTTEN_EVENT, on); return () => window.removeEventListener(FORGOTTEN_EVENT, on); }, [resync]);
+  const { resync } = lab; // the scenario hash goes too, or the remount would run its scenario again
+  useEffect(() => { const on = () => { setForgotten(true); clearScenarioHash(); resync(); }; window.addEventListener(FORGOTTEN_EVENT, on); return () => window.removeEventListener(FORGOTTEN_EVENT, on); }, [resync]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (lab.last?.runId) setResetMsg(""); }, [lab.last?.runId]); // the Reset note belongs to the moment of the reset, not to the run after it
   useEffect(() => { if (lab.epoch > 0) clearScenarioHash(); }, [lab.epoch]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (theme === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = theme; }, [theme]);
@@ -124,7 +124,7 @@ export default function App() {
           </div>
         )}
         <p className={resetMsg ? "reset-note" : "sr-only"} role="status" aria-live="polite" data-testid="reset-note">{resetMsg}</p>
-        {!presenter && <div className="page-head"><p className="head__intro" data-testid="head-intro">{PAGE_INTRO[page]}</p></div>}
+        {!presenter && <div className="page-head">{story?.tagline && <p className="muted" data-testid="tagline">{visible(story.tagline)}</p>}<p className="head__intro" data-testid="head-intro">{PAGE_INTRO[page]}</p></div>}
         {presenter && <PresenterSay say={say} heading={null} />}
         <div id={`panel-${page}`}>
           {lab.error && !story ? null : !story || !info ? <p className="muted" role="status">Loading...</p> : <View key={`${page}-${lab.epoch}`} lab={lab} />}

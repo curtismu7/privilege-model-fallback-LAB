@@ -87,6 +87,12 @@ export function loadCustomerConfig({ file, env = process.env } = {}) {
   return validateConfig(parsed);
 }
 
+// Each warning is written once at start-up (a bad field is never a silent fallback). `log` is console.warn by default.
+export function logCustomerWarnings(loaded, log = console.warn, tag = '[privilege-model-fallback-lab]') {
+  for (const w of loaded.warnings) log(`${tag} customer.config: ${w}`);
+  return loaded.warnings.length;
+}
+
 // What the browser may know: branding, the vertical and the filled cast. Nothing else.
 export const publicConfig = ({ config, warnings }) => ({ name: config.name, tagline: config.tagline, vertical: config.vertical, verticals: Object.values(VERTICALS).map((v) => ({ id: v.id, label: v.label })), cast: config.cast, warnings });
 

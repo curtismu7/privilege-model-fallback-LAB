@@ -78,7 +78,8 @@ export default function useLab() {
   }, [refreshObs]);
 
   // The server forgot this tab's workspace and made a default one: start the pages over so they read the key and state the server really has.
-  const resync = useCallback(() => { setEpoch((n) => n + 1); }, []);
+  // The run on screen belongs to the workspace the server lost, so it goes (as in reset()); a run whose own request raised this still sets its result afterwards.
+  const resync = useCallback(() => { setLast(null); setObs(null); setEpoch((n) => n + 1); }, []);
 
   const reset = useCallback(async () => {
     const r = await postReset();
