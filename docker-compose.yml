@@ -15,7 +15,7 @@ services:
     environment:
       PORT: "7836"
       PMF_BIND: 0.0.0.0
-      LAB_ALLOWED_HOSTS: ${LAB_ALLOWED_HOSTS:-}
+      LAB_ALLOWED_HOSTS: ${LAB_ALLOWED_HOSTS:-local.ping-devops.com,privilege-model-fallback-lab.local.ping-devops.com}
       CUSTOMER_CONFIG: ${CUSTOMER_CONFIG:-}
     # volumes:
     #   - ./customer.config.json:/config/customer.config.json:ro
