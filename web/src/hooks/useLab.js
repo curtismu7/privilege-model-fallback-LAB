@@ -1,0 +1,92 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { getInfo, getObservability, getStory, postReset, postRun, postScenario, setMode } from "../api";
+
+const say = (r, what) => r.body?.message || `${what} failed (HTTP ${r.status})`;
+
+/**
+ * The lab's one data hook. It holds the info (source, realAvailable, the banner), the story and talk track for the picked vertical, and the last run
+ * (so a visitor can leave the Fallback page and come back to it) with the record the run left behind. `switchMode` is the rule 19 toggle: POST
+ * /api/mode with exactly { source }, then every piece of data is loaded again. `epoch` goes up on a switch, a Reset or a new vertical so a page starts over.
+ */
+export default function useLab() {
+  const [vertical, setVerticalState] = useState(null); // unknown until the server says which vertical is configured: a retry before that asks for none either
+  const [info, setInfo] = useState(null);
+  const [story, setStory] = useState(null);
+  const [error, setError] = useState(null);
+  const [modeError, setModeError] = useState(null);
+  const [last, setLast] = useState(null); // { kind: "live" | "scenario", result, scenario?, runId, trace } or null before any run
+  const [obs, setObs] = useState(null); // the run-observability answer for the last run
+  const [busy, setBusy] = useState(false);
+  const [epoch, setEpoch] = useState(0);
+  const seq = useRef(0);
+
+  // `v` is the vertical to ask for. The FIRST load passes none (no default parameter: undefined must stay undefined), so the configured customer vertical
+  // and its cast overrides are what comes back; the server's answer then becomes the picked vertical.
+  const load = useCallback(async (v) => {
+    const mine = ++seq.current; // a late answer for a vertical or a mode the visitor has left is dropped
+    const [i, s] = await Promise.all([getInfo(), getStory(v)]);
+    if (mine !== seq.current) return false;
+    const bad = [i, s].find((r) => !r.ok);
+    if (bad) { setError(say(bad, "Loading the lab")); return false; }
+    setError(null); setInfo(i.body); setStory(s.body);
+    setVerticalState(s.body.vertical ?? v ?? null); // the vertical is set only once its story has loaded (the configured one wins on the first load)
+    return true;
+  }, []);
+
+  useEffect(() => { load(undefined); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // The picked vertical only changes once its story has loaded: a failed load leaves the old vertical (and the old page) in place, with the load error shown.
+  const setVertical = useCallback(async (v) => { setModeError(null); if (await load(v)) setEpoch((n) => n + 1); }, [load]);
+
+  // Rule 19: the server decides. A 409 (Real not available) is shown as the server worded it; nothing else changes.
+  const switchMode = useCallback(async (source) => {
+    if (info && source === info.source) return { ok: true }; // already in that mode: nothing changes, nothing is reloaded, the last run stays
+    const r = await setMode(source);
+    if (!r.ok) { setModeError(r.body?.message || `The mode did not change (HTTP ${r.status})`); return { ok: false, message: r.body?.message }; }
+    setModeError(null); setLast(null); setObs(null); setEpoch((n) => n + 1);
+    await load(vertical);
+    return { ok: true };
+  }, [info, load, vertical]);
+
+  const refreshObs = useCallback(async () => {
+    const r = await getObservability();
+    setObs(r.ok ? r.body : { record: { error: r.body?.error || "run_observability_failed", message: r.body?.message || `HTTP ${r.status}` }, streams: [] });
+  }, []);
+
+  // A run is data, a refusal included. Only a transport or validation failure (4xx/5xx) is returned as { ok: false } for the page to show.
+  const runLive = useCallback(async (prompt, providerStates) => {
+    setBusy(true);
+    try {
+      const r = await postRun(prompt, providerStates);
+      if (!r.ok) return { ok: false, status: r.status, message: say(r, "The run"), code: r.body?.error };
+      const { runId, trace, clockMs, ...result } = r.body; // eslint-disable-line no-unused-vars
+      setLast({ kind: "live", result, runId, trace });
+      await refreshObs();
+      return { ok: true };
+    } finally { setBusy(false); }
+  }, [refreshObs]);
+
+  const runScenario = useCallback(async (id) => {
+    setBusy(true);
+    try {
+      const r = await postScenario(id);
+      if (!r.ok) return { ok: false, status: r.status, message: say(r, "The scenario"), code: r.body?.error };
+      const { runId, trace, result, ...scenario } = r.body;
+      setLast({ kind: "scenario", id, result, scenario, runId, trace });
+      await refreshObs();
+      return { ok: true };
+    } finally { setBusy(false); }
+  }, [refreshObs]);
+
+  // The server forgot this tab's workspace and made a default one: start the pages over so they read the key and state the server really has.
+  // The run on screen belongs to the workspace the server lost, so it goes (as in reset()); a run whose own request raised this still sets its result afterwards.
+  const resync = useCallback(() => { setLast(null); setObs(null); setEpoch((n) => n + 1); }, []);
+
+  const reset = useCallback(async () => {
+    const r = await postReset();
+    setLast(null); setObs(null); setModeError(null); setEpoch((n) => n + 1);
+    await load(vertical);
+    return r.ok;
+  }, [load, vertical]);
+
+  return { vertical, setVertical, info, story, source: info?.source || null, error, modeError, last, obs, busy, epoch, reload: () => load(vertical), switchMode, runLive, runScenario, reset, resync };
+}

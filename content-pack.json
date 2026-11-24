@@ -1,0 +1,276 @@
+{
+  "schema": "demo-content-pack/1",
+  "id": "privilege-model-fallback-lab",
+  "title": "Privilege model fallback LAB",
+  "version": "0.1.0",
+  "demo": {
+    "id": "privilege-model-fallback-lab",
+    "name": "Privilege model fallback LAB",
+    "catalog": "D000",
+    "baseUrl": "http://localhost:7836",
+    "doctor": "/api/health",
+    "tags": [
+      "llm",
+      "fallback",
+      "budget",
+      "privilege",
+      "simulated",
+      "mock-only"
+    ]
+  },
+  "glossary": [
+    {
+      "id": "model-fallback",
+      "term": "Model fallback",
+      "definition": "An LLM key names a second model that answers when the first is down, overloaded or out of budget. The fallback can be on a different provider. This is the only claim taken from the 2026-11-21 release notes; how a call is ordered, retried or named in the response is this lab's own model.",
+      "aliases": [
+        "fallback model",
+        "second model"
+      ]
+    },
+    {
+      "id": "per-model-budget",
+      "term": "Per-model budget",
+      "definition": "Each model on the key carries its own token budget, so a fallback answers within a known ceiling and its spend is charged to its own ledger, not the primary's.",
+      "aliases": [
+        "fallback budget",
+        "token ledger"
+      ]
+    },
+    {
+      "id": "named-refusal",
+      "term": "Named refusal",
+      "definition": "When no model can answer, the lab returns a result that names the refusal (all_budgets_exhausted, all_providers_failed, chain_exhausted or no_fallback_configured) and says which budgets ran out and which providers failed. The wording and status are the lab's own and UNVERIFIED.",
+      "aliases": [
+        "refusal"
+      ]
+    },
+    {
+      "id": "unverified-model",
+      "term": "UNVERIFIED (lab model)",
+      "definition": "Anything the release notes do not say is the lab's own model and is labelled UNVERIFIED: what overloaded means, whether a retry comes first, mid-stream failure, whether the guard re-runs on the fallback's answer, the response and refusal shape, token counting.",
+      "aliases": [
+        "lab model"
+      ]
+    }
+  ],
+  "sources": [],
+  "cards": [
+    {
+      "id": "try-primary-healthy",
+      "label": "S01: The primary answers, nothing falls back",
+      "description": "The primary model is healthy, so it answers. The trace has one attempt and the fallback is never tried; only the primary's ledger is charged.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#fallback/primary-healthy"
+      },
+      "terms": [
+        "model-fallback"
+      ],
+      "story": "S01"
+    },
+    {
+      "id": "try-primary-down",
+      "label": "S02: The primary is down and the second model answers",
+      "description": "The key names a second model. The lab tries it next, the response names the model that served, and the trace lists both attempts with their latency.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#fallback/primary-down"
+      },
+      "terms": [
+        "model-fallback"
+      ],
+      "story": "S02"
+    },
+    {
+      "id": "try-primary-overloaded",
+      "label": "S03: The primary is overloaded and the second model answers",
+      "description": "The second model answers. The lab does not retry the primary first: whether the product retries is UNVERIFIED.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#fallback/primary-overloaded"
+      },
+      "terms": [
+        "model-fallback",
+        "unverified-model"
+      ],
+      "story": "S03"
+    },
+    {
+      "id": "try-primary-out-of-budget",
+      "label": "S04: The primary is out of budget and the second model answers",
+      "description": "The second model answers and is charged on its own ledger; the primary's ledger does not move.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#fallback/primary-out-of-budget"
+      },
+      "terms": [
+        "model-fallback",
+        "per-model-budget"
+      ],
+      "story": "S04"
+    },
+    {
+      "id": "try-fallback-different-provider",
+      "label": "S05: The second model is on another provider",
+      "description": "The release notes say the fallback can be a different provider. The lab shows the serving provider in the verdict.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#fallback/fallback-different-provider"
+      },
+      "terms": [
+        "model-fallback"
+      ],
+      "story": "S05"
+    },
+    {
+      "id": "try-both-budgets-exhausted",
+      "label": "S06: Both budgets are spent: a named refusal",
+      "description": "The answer is a named refusal that says which budgets ran out. No provider is called and nothing is charged. The refusal wording and status are UNVERIFIED, so the lab labels them as its own.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#fallback/both-budgets-exhausted"
+      },
+      "terms": [
+        "per-model-budget",
+        "named-refusal"
+      ],
+      "story": "S06"
+    },
+    {
+      "id": "try-both-providers-down",
+      "label": "S07: Both models are down: a named refusal",
+      "description": "The refusal names each model and its status code, so the support platform team can tell a provider outage from a spent budget.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#fallback/both-providers-down"
+      },
+      "terms": [
+        "named-refusal"
+      ],
+      "story": "S07"
+    },
+    {
+      "id": "try-one-model-chain",
+      "label": "S08: A key with no fallback configured",
+      "description": "The refusal says no fallback is configured, which is the cue to add a second model to the key.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#fallback/one-model-chain"
+      },
+      "terms": [
+        "named-refusal"
+      ],
+      "story": "S08"
+    },
+    {
+      "id": "try-slow-primary-timeout",
+      "label": "S09: A slow primary hits the timeout",
+      "description": "The call times out (504) after the timeout, then the second model answers. The lab clock shows the cost: the timeout plus the second model's latency.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/#fallback/slow-primary-timeout"
+      },
+      "terms": [
+        "model-fallback"
+      ],
+      "story": "S09"
+    },
+    {
+      "id": "concept-limits",
+      "label": "What is sourced and what is the lab's model",
+      "description": "The release-notes sentence, the lab's own model and the list of what is UNVERIFIED.",
+      "group": "concept",
+      "action": {
+        "type": "route",
+        "href": "/#limits"
+      },
+      "terms": [
+        "unverified-model"
+      ]
+    },
+    {
+      "id": "ref-doctor",
+      "label": "Doctor and health",
+      "description": "Preflight checks and the demo-health/1 endpoint.",
+      "group": "setup",
+      "action": {
+        "type": "route",
+        "href": "/api/health"
+      }
+    }
+  ],
+  "diagrams": [
+    {
+      "id": "model-fallback",
+      "label": "LLM model fallback: a second model answers",
+      "href": "/#diagram",
+      "mode": "mock"
+    }
+  ],
+  "stories": [
+    {
+      "id": "S01",
+      "title": "The primary answers, nothing falls back",
+      "say": "The primary model is healthy, so it answers. The trace has one attempt and the fallback is never tried; only the primary's ledger is charged.",
+      "file": "server/src/data/stories/S01-primary-healthy.json"
+    },
+    {
+      "id": "S02",
+      "title": "The primary is down and the second model answers",
+      "say": "The key names a second model. The lab tries it next, the response names the model that served, and the trace lists both attempts with their latency.",
+      "file": "server/src/data/stories/S02-primary-down.json"
+    },
+    {
+      "id": "S03",
+      "title": "The primary is overloaded and the second model answers",
+      "say": "The second model answers. The lab does not retry the primary first: whether the product retries is UNVERIFIED.",
+      "file": "server/src/data/stories/S03-primary-overloaded.json"
+    },
+    {
+      "id": "S04",
+      "title": "The primary is out of budget and the second model answers",
+      "say": "The second model answers and is charged on its own ledger; the primary's ledger does not move.",
+      "file": "server/src/data/stories/S04-primary-out-of-budget.json"
+    },
+    {
+      "id": "S05",
+      "title": "The second model is on another provider",
+      "say": "The release notes say the fallback can be a different provider. The lab shows the serving provider in the verdict.",
+      "file": "server/src/data/stories/S05-fallback-different-provider.json"
+    },
+    {
+      "id": "S06",
+      "title": "Both budgets are spent: a named refusal",
+      "say": "The answer is a named refusal that says which budgets ran out. No provider is called and nothing is charged. The refusal wording and status are UNVERIFIED, so the lab labels them as its own.",
+      "file": "server/src/data/stories/S06-both-budgets-exhausted.json"
+    },
+    {
+      "id": "S07",
+      "title": "Both models are down: a named refusal",
+      "say": "The refusal names each model and its status code, so the support platform team can tell a provider outage from a spent budget.",
+      "file": "server/src/data/stories/S07-both-providers-down.json"
+    },
+    {
+      "id": "S08",
+      "title": "A key with no fallback configured",
+      "say": "The refusal says no fallback is configured, which is the cue to add a second model to the key.",
+      "file": "server/src/data/stories/S08-one-model-chain.json"
+    },
+    {
+      "id": "S09",
+      "title": "A slow primary hits the timeout",
+      "say": "The call times out (504) after the timeout, then the second model answers. The lab clock shows the cost: the timeout plus the second model's latency.",
+      "file": "server/src/data/stories/S09-slow-primary-timeout.json"
+    }
+  ]
+}

@@ -148,6 +148,8 @@ test('hostile input: prompt, chain, budgets, ids and unknown fields get a 4xx an
     err(await put({ chain: [{ ...e, apiKey: 'sk-abc' }] }), 400, 'unknown_field');
     err(await put({ chain: [{ ...e, secret: 'x' }] }), 400, 'unknown_field');
     err(await put({ chain: [e], timeoutMs: 5 }), 400, 'bad_timeout');
+    err(await put({ chain: [e], timeoutMs: 499 }), 400, 'bad_timeout');
+    assert.equal((await put({ chain: [e], timeoutMs: 500 })).status, 200, '500 ms is the shortest accepted timeout');
     err(await put({ chain: [e], timeoutMs: 'fast' }), 400, 'bad_timeout');
     err(await put({ chain: [e], timeoutMs: 10 ** 9 }), 400, 'bad_timeout');
     err(await put({ chain: [null] }), 400, 'bad_body');

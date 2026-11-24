@@ -1,0 +1,8 @@
+{
+  "id": "S02",
+  "scenario": "primary-down",
+  "title": "The primary is down and the second model answers",
+  "goal": "For {{castBrand}}, {{castApp}} keeps working for {{castTask}} while its first model is unavailable.",
+  "obstacle": "The primary model answers 503. Without a second model the call would simply fail.",
+  "control": "The key names a second model. The lab tries it next, the response names the model that served, and the trace lists both attempts with their latency."
+}

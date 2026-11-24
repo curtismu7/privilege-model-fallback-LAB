@@ -1,0 +1,8 @@
+{
+  "id": "S06",
+  "scenario": "both-budgets-exhausted",
+  "title": "Both budgets are spent: a named refusal",
+  "goal": "For {{castBrand}}, {{castOwner}} wants a hard ceiling on what {{castKey}} can spend.",
+  "obstacle": "Neither model can pay for the call.",
+  "control": "The answer is a named refusal that says which budgets ran out. No provider is called and nothing is charged. The refusal wording and status are UNVERIFIED, so the lab labels them as its own."
+}

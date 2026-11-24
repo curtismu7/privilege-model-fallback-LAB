@@ -1,0 +1,8 @@
+{
+  "id": "S01",
+  "scenario": "primary-healthy",
+  "title": "The primary answers, nothing falls back",
+  "goal": "At {{castBrand}}, {{castApp}} uses the key {{castKey}} for {{castTask}}.",
+  "obstacle": "A fallback is only worth having if it stays out of the way when it is not needed.",
+  "control": "The primary model is healthy, so it answers. The trace has one attempt and the fallback is never tried; only the primary's ledger is charged."
+}

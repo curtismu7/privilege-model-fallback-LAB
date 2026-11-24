@@ -6,6 +6,7 @@ import dgram from 'node:dgram';
 import { isLoopbackHost } from './safety.js';
 
 let active = null;
+const isLiteralIp = (h) => typeof h === 'string' && net.isIP(h) !== 0;
 
 export function installNetguard() {
   if (active) return active;
@@ -49,9 +50,9 @@ export function installNetguard() {
     return real.connect.apply(this, args);
   };
   dns.lookup = function guardedLookup(host, ...rest) {
-    // listen() resolves its bind address through lookup. A wildcard bind (a container's 0.0.0.0 bind) is not outbound,
-    // and connecting to it is still refused by the socket guard above, so only the lookup is allowed.
-    if (!mayLeave(host) && host !== '0.0.0.0' && host !== '::') {
+    // listen() resolves its bind address through lookup, even a literal IP. A literal IP (a container's 0.0.0.0 wildcard bind, or a LAN address the
+    // owner opted into with PMF_BIND) needs no name server, so the lookup is not outbound; connecting to it is still refused by the socket guard above.
+    if (!mayLeave(host) && !isLiteralIp(host)) {
       attempts.push(`dns:${host}`);
       const cb = rest.find((r) => typeof r === 'function');
       return cb?.(new Error(`network blocked: ${host}`));
@@ -59,7 +60,7 @@ export function installNetguard() {
     return real.lookup.call(dns, host, ...rest);
   };
   dns.promises.lookup = async function guardedPromiseLookup(host, ...rest) {
-    if (!mayLeave(host) && host !== '0.0.0.0' && host !== '::') { attempts.push(`dns:${host}`); throw new Error(`network blocked: ${host}`); }
+    if (!mayLeave(host) && !isLiteralIp(host)) { attempts.push(`dns:${host}`); throw new Error(`network blocked: ${host}`); }
     return real.plookup.call(dns.promises, host, ...rest);
   };
   globalThis.fetch = async function guardedFetch(input, init) {

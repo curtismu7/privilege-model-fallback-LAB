@@ -1,0 +1,8 @@
+{
+  "id": "S03",
+  "scenario": "primary-overloaded",
+  "title": "The primary is overloaded and the second model answers",
+  "goal": "For {{castBrand}}, {{castApp}} gets its answer even when the first model is busy.",
+  "obstacle": "The primary model answers 429. In this lab that is the lab's own model of overloaded and it is UNVERIFIED against the product.",
+  "control": "The second model answers. The lab does not retry the primary first: whether the product retries is UNVERIFIED."
+}

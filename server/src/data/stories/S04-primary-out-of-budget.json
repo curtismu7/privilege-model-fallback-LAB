@@ -1,0 +1,8 @@
+{
+  "id": "S04",
+  "scenario": "primary-out-of-budget",
+  "title": "The primary is out of budget and the second model answers",
+  "goal": "For {{castBrand}}, {{castOwner}} gave each model on {{castKey}} its own token budget.",
+  "obstacle": "The primary has too few tokens left for the call, so it is skipped without a provider call.",
+  "control": "The second model answers and is charged on its own ledger; the primary's ledger does not move."
+}

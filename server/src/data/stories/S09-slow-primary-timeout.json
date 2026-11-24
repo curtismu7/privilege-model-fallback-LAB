@@ -1,0 +1,8 @@
+{
+  "id": "S09",
+  "scenario": "slow-primary-timeout",
+  "title": "A slow primary hits the timeout",
+  "goal": "For {{castBrand}}, {{castApp}} should not wait forever on a slow model.",
+  "obstacle": "The primary is slow and the key's timeout is shorter than its answer.",
+  "control": "The call times out (504) after the timeout, then the second model answers. The lab clock shows the cost: the timeout plus the second model's latency."
+}

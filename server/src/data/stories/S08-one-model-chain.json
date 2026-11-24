@@ -1,0 +1,8 @@
+{
+  "id": "S08",
+  "scenario": "one-model-chain",
+  "title": "A key with no fallback configured",
+  "goal": "For {{castBrand}}, {{castOwner}} created {{castKey}} with a single model.",
+  "obstacle": "That one model is down and there is nowhere to fall back to.",
+  "control": "The refusal says no fallback is configured, which is the cue to add a second model to the key."
+}

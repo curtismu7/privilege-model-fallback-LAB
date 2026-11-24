@@ -6,7 +6,7 @@ import { refuse } from './errors.js';
 export const LIMITS = Object.freeze({
   maxChain: 5,
   maxBudgetTokens: 1_000_000,
-  minTimeoutMs: 100,
+  minTimeoutMs: 500, // above a healthy call's 400 ms (fallback.js LATENCY_MS): a shorter timeout would be accepted and never fire; a test pins it
   maxTimeoutMs: 60_000,
   defaultTimeoutMs: 3000,
   maxPromptChars: MAX_PROMPT_CHARS,

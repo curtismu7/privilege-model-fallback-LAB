@@ -10,6 +10,9 @@ import { SCENARIOS, runScenario } from './scenarios.js';
 import { BANNER, RELEASE_NOTES_DATE } from './data.js';
 import { DEFAULT_CHAIN } from './scenarios.js';
 import { validateConfig } from './validate.js';
+import { STORIES, scanStories } from './stories.js';
+import { loadTalkTrack } from './talkTrack.js';
+import { DIAGRAM_NAMES, diagramProblems, rawDiagram } from './diagramData.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const PIN = path.join(ROOT, 'server/test/model-gateway-sim.sha256');
@@ -57,6 +60,17 @@ export function runChecks({ env = process.env } = {}) {
 
   try { validateConfig({ chain: DEFAULT_CHAIN }); add('default-chain', 'pass', 'the default chain passes the same validation as PUT /api/chain'); }
   catch { add('default-chain', 'fail', 'the default chain does not pass validation'); }
+
+  // Stories are data with {{cast}} tokens (rule 10): every token is defined by all three vertical packs, every story names a real scenario and has a talk-track section.
+  const scan = scanStories(STORIES, undefined, Object.fromEntries(loadTalkTrack().map((t) => [`talk-track ${t.id}`, t])));
+  const sectionIds = new Set(loadTalkTrack().map((t) => t.id));
+  const lonely = STORIES.filter((st) => !SCENARIOS.some((sc) => sc.id === st.scenario) || !sectionIds.has(st.id)).map((st) => st.id);
+  const storyBad = [...scan.missing, ...lonely.map((id) => `${id}: no scenario or no talk-track section`)];
+  add('stories', storyBad.length === 0 ? 'pass' : 'fail', storyBad.length === 0 ? `${scan.stories} stories and the talk track use only tokens every vertical pack defines (${scan.tokens.length} tokens)` : storyBad.slice(0, 3).join('; '));
+
+  // Rule 17: the diagram is diagram-studio/1 data, loaded by name and checked with the studio's own validator.
+  const badDiagrams = DIAGRAM_NAMES.filter((n) => !rawDiagram(n) || diagramProblems(rawDiagram(n)).length > 0);
+  add('diagram', badDiagrams.length === 0 ? 'pass' : 'fail', badDiagrams.length === 0 ? `${DIAGRAM_NAMES.join(', ')} loads by name and passes the diagram-studio/1 checks` : `invalid or missing: ${badDiagrams.join(', ')}`);
 
   // Every scenario gives the result its hand-written expectation says, and the netguard sees no outbound attempt while they run.
   const guard = installNetguard();

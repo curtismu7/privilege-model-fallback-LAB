@@ -19,13 +19,19 @@ const text = (p) => fs.readFileSync(p, 'utf8');
 // The shared check script names the patterns it searches for, so it is the one file the scan skips (as the script does for itself).
 const mine = files.filter((p) => !p.endsWith('package-lock.json') && !p.endsWith('.sha256') && !p.endsWith('check-no-ai-attribution.sh'));
 
-test('every host named in shipped text is loopback, .example or .invalid (the apex example.com is not allowed)', () => {
+// Files copied byte for byte from the family's shared components (each pinned by its own test) or from a shared tool: their text is not this lab's.
+const VENDORED = [/web\/src\/(diagram-kit|top-menu|floating-dialog|gateway-trace|run-observability|talk-track)\//, /web\/src\/components\/(JsonPane|jsonpane)/, /web\/src\/standalone-ui\.css$/,
+  /server\/src\/(gatewayTrace|runObservability|diagramStudioValidate|health)\.js$/, /scripts\/(run-observability-checkPin|check-ui-standard)\./, /docs\/content-pack\.schema\.json$/];
+const OWN_REPO = /^github\.com\/curtismu7\/privilege-model-fallback-LAB(\/|$)/i;
+
+test('every host named in this lab\'s own text is loopback, .example or .invalid, or this lab\'s own repo (the apex example.com is not allowed)', () => {
   const bad = [];
   // CI workflow files name the CI tool's download host; they are not shipped lab text.
-  for (const p of mine.filter((f) => !f.includes(`${path.sep}.github${path.sep}`))) {
-    for (const m of text(p).matchAll(/\b(?:https?|wss?):\/\/([^\s/?#"'`<>\\)]+)/gi)) {
-      const h = m[1].replace(/:\d+$/, '').toLowerCase();
-      if (!(/^(localhost|127\.0\.0\.1|\[::1\]|::1)$/.test(h) || /(^|\.)(example|invalid)$/.test(h) || h === '${host}' || h.includes('${'))) bad.push(`${path.relative(ROOT, p)}: ${h}`);
+  for (const p of mine.filter((f) => !f.includes(`${path.sep}.github${path.sep}`) && !VENDORED.some((re) => re.test(f.split(path.sep).join('/'))))) {
+    for (const m of text(p).matchAll(/\b(?:https?|wss?):\/\/([^\s"'`<>\\)#?]+)/gi)) {
+      const h = m[1].replace(/:\d+(?=\/|$)/, '').toLowerCase();
+      const host = h.split('/')[0];
+      if (!(/^(localhost|127\.0\.0\.1|\[::1\]|::1)$/.test(host) || /(^|\.)(example|invalid)$/.test(host) || host === '${host}' || host.includes('${') || OWN_REPO.test(h))) bad.push(`${path.relative(ROOT, p)}: ${h}`);
     }
   }
   assert.deepEqual(bad, []);
