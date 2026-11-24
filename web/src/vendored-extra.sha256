@@ -1,0 +1,3 @@
+# sha256 of vendored files that the shared components do not pin themselves (shared/top-menu/ReleaseNotes.jsx, shared/talk-track/TalkTrackDialog.jsx). Byte copies from AI-DEMO-Standalone shared/: change them there, re-copy, re-pin.
+16e99c0ec250aea05c05aa2a2fc729101686ac2b2b1f3c2ac837130fde4c459d  web/src/top-menu/ReleaseNotes.jsx
+bf97c20e7124ad1986b16acd1d101638959a411d36915031b9a25177586fd82c  web/src/talk-track/TalkTrackDialog.jsx

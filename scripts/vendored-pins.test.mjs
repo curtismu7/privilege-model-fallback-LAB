@@ -58,3 +58,16 @@ test('the vendored canonical JsonPane is used for every JSON pane: no hand-rolle
   }
   assert.doesNotMatch(fs.readFileSync(path.join(root, 'web/src/app.css'), 'utf8'), /\.json[^{]*\{[^}]*(max-height|overflow:\s*(auto|scroll))/, 'a JSON pane is full view, never capped');
 });
+
+test('the two vendored files no shared pin covers (ReleaseNotes.jsx, TalkTrackDialog.jsx) match web/src/vendored-extra.sha256, and equal the canonical copy when it is next door', () => {
+  const lines = fs.readFileSync(path.join(root, 'web/src/vendored-extra.sha256'), 'utf8').split('\n').filter((l) => l && !l.startsWith('#')).map((l) => l.split(/\s+/));
+  assert.deepEqual(lines.map(([, f]) => f).sort(), ['web/src/talk-track/TalkTrackDialog.jsx', 'web/src/top-menu/ReleaseNotes.jsx']);
+  for (const [hash, f] of lines) assert.equal(sha(path.join(root, f)), hash, `${f} was edited: change the shared component first, then re-vendor and re-pin`);
+  const shared = path.join(root, '..', 'AI-DEMO-Standalone', 'shared');
+  if (fs.existsSync(shared)) for (const [, f] of lines) { const canon = path.join(shared, f.replace(/^web\/src\//, '')); if (fs.existsSync(canon)) assert.equal(sha(canon), sha(path.join(root, f)), `${f} differs from the canonical copy`); }
+});
+
+test('the shared ReleaseNotes dialog (another lab\'s text) is vendored because TopMenu imports it, but this lab never opens it: App passes onVersion, and the About dialog is its own', () => {
+  assert.match(fs.readFileSync(path.join(root, 'web/src/App.jsx'), 'utf8'), /onVersion=\{/);
+  assert.doesNotMatch(fs.readFileSync(path.join(root, 'web/src/about/AboutDialog.jsx'), 'utf8'), /Token Workbench/);
+});

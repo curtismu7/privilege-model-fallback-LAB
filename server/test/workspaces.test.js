@@ -107,7 +107,7 @@ test('a request that will be refused (400 or 404) creates nothing and evicts not
     const refused = [
       await lab.send('POST', '/api/run', { prompt: '' }, w('newcomer')),
       await lab.send('POST', '/api/run', { prompt: 'hello there', providerStates: ['nope'] }, w('newcomer')),
-      await lab.send('POST', '/api/run', { prompt: 'hello there', providerStates: ['healthy', 'healthy', 'healthy'] }, w('newcomer')),
+      await lab.send('POST', '/api/run', { prompt: 'hello there', providerStates: ['healthy', 'healthy', 'healthy'] }, w('keep-3')), // a KNOWN workspace with a two-model chain
       await lab.send('POST', '/api/run', { prompt: 'hello there', apiKey: 'x' }, w('newcomer')),
       await lab.send('PUT', '/api/chain', { chain: [] }, w('newcomer')),
       await lab.send('PUT', '/api/chain', { chain: [{ provider: 'provider-a', model: 'bad model!', budgetTokens: 1 }] }, w('newcomer')),
@@ -115,7 +115,7 @@ test('a request that will be refused (400 or 404) creates nothing and evicts not
       await lab.send('POST', '/api/run', { prompt: 'hello there' }, w('Bad Id')),
     ];
     assert.deepEqual(refused.map((r) => r.status), [400, 400, 400, 400, 400, 400, 404, 400]);
-    for (const r of refused) assert.equal(r.headers.get('x-workspace-fresh'), null, 'a refused request says nothing about the workspace');
+    refused.forEach((r, i) => assert.equal(r.headers.get('x-workspace-fresh'), null, `refused request ${i} says nothing about the workspace`));
     for (let i = 0; i < MAX_WORKSPACES; i++) assert.equal((await lab.get('/api/chain', w(`keep-${i}`))).headers.get('x-workspace-fresh'), '0', `keep-${i} was not evicted by a refused request`);
     assert.equal((await lab.get('/api/chain', w('newcomer'))).headers.get('x-workspace-fresh'), '1', 'the refused requests never created it');
   } finally { await lab.close(); }
@@ -130,5 +130,28 @@ test('the run states are still checked against the workspace\'s own chain length
     assert.deepEqual([r.status, r.json.error], [400, 'bad_provider_states']);
     assert.equal((await lab.send('POST', '/api/run', { prompt: 'hello there', providerStates: ['healthy'] }, w)).status, 200);
     assert.equal((await lab.send('POST', '/api/run', { prompt: 'hello there', providerStates: ['healthy', 'down'] }, { 'x-workspace': 'brand-new' })).status, 200, 'a new workspace starts with the default two-model chain');
+  } finally { await lab.close(); }
+});
+
+test('a Run from a forgotten workspace whose saved key was longer than the default is recognised: the Fresh signal goes out, nothing loops, and the workspace is the default one afterwards', async () => {
+  const lab = await startLab();
+  try {
+    const w = { 'x-workspace': 'long-key-tab' };
+    const four = ['m1', 'm2', 'm3', 'm4'].map((model) => ({ provider: 'provider-a', model, budgetTokens: 500 }));
+    assert.equal((await lab.send('PUT', '/api/chain', { chain: four }, w)).status, 200);
+    assert.equal((await lab.send('POST', '/api/run', { prompt: 'hello there', providerStates: ['down', 'down', 'down', 'healthy'] }, w)).status, 200, 'known: four states fit its four models');
+    for (let i = 0; i < MAX_WORKSPACES; i++) await lab.get('/api/chain', { 'x-workspace': `other-${i}` }); // the tab's workspace is forgotten (a restart does the same)
+    const first = await lab.send('POST', '/api/run', { prompt: 'hello there', providerStates: ['down', 'down', 'down', 'healthy'] }, w);
+    assert.equal(first.headers.get('x-workspace-fresh'), '1', 'the tab is told the workspace was forgotten, even though this run is refused');
+    assert.deepEqual([first.status, first.json.error], [400, 'bad_provider_states']);
+    // the workspace now exists with the default key: the tab was told once and reloads its key; the same refusal is now a plain one from a KNOWN workspace
+    // (nothing created, nothing said), and the right number of states runs
+    const again = await lab.send('POST', '/api/run', { prompt: 'hello there', providerStates: ['down', 'down', 'down', 'healthy'] }, w);
+    assert.deepEqual([again.status, again.headers.get('x-workspace-fresh')], [400, null]);
+    assert.equal((await lab.get('/api/chain', w)).json.chain.length, 2);
+    assert.equal((await lab.send('POST', '/api/run', { prompt: 'hello there', providerStates: ['down', 'healthy'] }, w)).status, 200);
+    // a known workspace's refused run still touches nothing
+    const before = (await lab.get('/api/chain', { 'x-workspace': 'other-5' })).headers.get('x-workspace-fresh');
+    assert.equal(before, '0');
   } finally { await lab.close(); }
 });

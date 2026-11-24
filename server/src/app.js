@@ -134,10 +134,14 @@ export function createApp({
     const id = workspaceFrom(req);
     onlyKeys(req.body, ['prompt', 'providerStates'], 'the run request');
     validatePrompt(req.body.prompt);
-    // the states are checked against the chain the workspace has (a workspace that does not exist yet starts with the default chain), without creating it
-    validateProviderStates(req.body.providerStates, workspaces.peek(id)?.key().entries.length ?? DEFAULT_CHAIN.length);
+    // The states are checked against the chain the workspace has. A workspace that does not exist is NOT checked here: it is created below with the default chain and
+    // the Fresh signal goes out, so a tab whose saved key was longer (after a restart or an eviction) learns the lab was reset instead of being refused for ever.
+    // A KNOWN workspace's refused request is checked first, so it creates and evicts nothing.
+    const known = workspaces.peek(id);
+    validateProviderStates(req.body.providerStates, known ? known.key().entries.length : LIMITS.maxChain); // a bad state name or type is refused before anything is created, for any workspace
     const ws = wsOf(req, res);
     const key = ws.key();
+    if (!known) validateProviderStates(req.body.providerStates, key.entries.length); // the new default workspace: the states must still fit its chain (a 400, now with the Fresh header)
     const result = runFallback(key, req.body.prompt, ws.clock(), { providerStates: req.body.providerStates });
     res.json({ ...result, clockMs: ws.clock().now(), ...recordRun(ws, { kind: 'live', prompt: req.body.prompt, result }) });
   });

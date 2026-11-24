@@ -11,6 +11,7 @@ import LimitsPage from "./pages/LimitsPage.jsx";
 import { visible } from "./safeText";
 import { FORGOTTEN_EVENT } from "./workspace.js";
 import { dialogItems } from "./talk";
+import AboutDialog from "./about/AboutDialog.jsx";
 
 export const PAGES = [
   { id: "fallback", label: "Fallback", View: FallbackPage },
@@ -49,6 +50,7 @@ export default function App() {
   const [fontStep, setFontStep] = useState(initialFont);
   const [resetMsg, setResetMsg] = useState("");
   const [forgotten, setForgotten] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   // The server forgot this tab's workspace (a restart, or more than 20 workspaces): say so plainly and read the key and state again.
   const { resync } = lab; // the scenario hash goes too, or the remount would run its scenario again
@@ -104,6 +106,7 @@ export default function App() {
           talkTrack={{ active: talkOpen, onToggle: () => setTalkOpen((v) => !v) }}
           help={{ href: "https://github.com/curtismu7/privilege-model-fallback-LAB#readme" }}
           version={info?.version ? `v${info.version}` : null}
+          onVersion={() => setAboutOpen((v) => !v)}
           onReset={reset}
           extra={<ModeToggle source={source || "mock"} info={info} onSwitch={lab.switchMode} />}
         />
@@ -130,6 +133,7 @@ export default function App() {
           {lab.error && !story ? null : !story || !info ? <p className="muted" role="status">Loading...</p> : <View key={`${page}-${lab.epoch}`} lab={lab} />}
         </div>
       </main>
+      <AboutDialog isOpen={aboutOpen} onClose={() => setAboutOpen(false)} info={info} version={info?.version ? `v${info.version}` : ""} />
       <TalkTrackDialog isOpen={talkOpen} onClose={() => setTalkOpen(false)} talk={dialogItems(story?.talkTrack ?? [])} />
     </div>
   );
