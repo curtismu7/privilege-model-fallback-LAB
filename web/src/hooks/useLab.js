@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getInfo, getObservability, getStory, postReset, postRun, postScenario, setMode } from "../api";
 
 const say = (r, what) => r.body?.message || `${what} failed (HTTP ${r.status})`;
-const DEFAULT_VERTICAL = "retail";
 
 /**
  * The lab's one data hook. It holds the info (source, realAvailable, the banner), the story and talk track for the picked vertical, and the last run
@@ -10,7 +9,7 @@ const DEFAULT_VERTICAL = "retail";
  * /api/mode with exactly { source }, then every piece of data is loaded again. `epoch` goes up on a switch, a Reset or a new vertical so a page starts over.
  */
 export default function useLab() {
-  const [vertical, setVerticalState] = useState(DEFAULT_VERTICAL);
+  const [vertical, setVerticalState] = useState(null); // unknown until the server says which vertical is configured: a retry before that asks for none either
   const [info, setInfo] = useState(null);
   const [story, setStory] = useState(null);
   const [error, setError] = useState(null);
@@ -21,7 +20,9 @@ export default function useLab() {
   const [epoch, setEpoch] = useState(0);
   const seq = useRef(0);
 
-  const load = useCallback(async (v = vertical) => {
+  // `v` is the vertical to ask for. The FIRST load passes none (no default parameter: undefined must stay undefined), so the configured customer vertical
+  // and its cast overrides are what comes back; the server's answer then becomes the picked vertical.
+  const load = useCallback(async (v) => {
     const mine = ++seq.current; // a late answer for a vertical or a mode the visitor has left is dropped
     const [i, s] = await Promise.all([getInfo(), getStory(v)]);
     if (mine !== seq.current) return;
@@ -29,7 +30,7 @@ export default function useLab() {
     if (bad) { setError(say(bad, "Loading the lab")); return; }
     setError(null); setInfo(i.body); setStory(s.body);
     if (s.body.vertical && s.body.vertical !== v) setVerticalState(s.body.vertical); // the configured vertical wins on the first load
-  }, [vertical]);
+  }, []);
 
   useEffect(() => { load(undefined); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const setVertical = useCallback((v) => { setVerticalState(v); setEpoch((n) => n + 1); load(v); }, [load]);

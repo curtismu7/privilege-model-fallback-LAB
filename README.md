@@ -17,7 +17,7 @@ npm run doctor     # one check per scenario, kit pin, stories and diagram, netgu
 npm run reset      # resets a running lab (default chain, empty ledgers, fresh clock)
 ./scripts/run.sh   # install if needed, build if needed, doctor, start
 ```
-Docker (OrbStack): `HOST_PORT=7836 docker compose up --build -d`, published on `127.0.0.1` only, non-root, `restart: unless-stopped`, healthcheck on `/api/health`.
+Docker (OrbStack): `HOST_PORT=7836 docker compose up --build -d`, published on `127.0.0.1` only, non-root, `restart: unless-stopped`, healthcheck on `/api/health`. Branding in Docker: the root file system is read-only, so `customer.config.json` is mounted, not written: copy `customer.config.example.json` to `customer.config.json`, uncomment the `volumes` block in `docker-compose.yml` and set `CUSTOMER_CONFIG=/config/customer.config.json`. Without it the lab runs with its defaults.
 Node 26. Heavy work on the Air: `air-test . -- npm test` (git add new files first). The tests need no web build.
 
 ## Pages

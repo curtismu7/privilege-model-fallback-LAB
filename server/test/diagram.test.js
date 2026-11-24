@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import { DIAGRAM_NAMES, buildDiagram, hasDiagram, rawDiagram, diagramProblems } from '../src/diagramData.js';
+import { DIAGRAM_NAMES, buildDiagram, dropNumbering, hasDiagram, rawDiagram, diagramProblems } from '../src/diagramData.js';
 import { castFor } from '../src/cast.js';
 import { startLab } from './helpers.js';
 
@@ -51,4 +51,15 @@ test('GET /api/diagram by name; default name; an unknown name is a 404 and never
     assert.equal((await lab.get('/api/diagram?vertical=nope')).status, 400);
     assert.equal(hasDiagram('toString'), false);
   } finally { await lab.close(); }
+});
+
+test('only the studio\'s arrow numbering is dropped: a diagram numbered throughout loses it, a label that merely starts with a number keeps it', () => {
+  const e = (...labels) => labels.map((label) => ({ label }));
+  assert.deepEqual(dropNumbering(e('1 call', '2 try', '3a answer', '3b fallback', '10 refuse')).map((x) => x.label), ['call', 'try', 'answer', 'fallback', 'refuse']);
+  assert.deepEqual(dropNumbering(e('call', '3 retries then answer', 'refuse')).map((x) => x.label), ['call', '3 retries then answer'].concat('refuse'), 'not numbered throughout: nothing is dropped');
+  assert.deepEqual(dropNumbering(e('1 call', '2')).map((x) => x.label), ['1 call', '2'], 'a bare number is not a prefix');
+  assert.deepEqual(dropNumbering(e('1 call', '12345 pieces')).map((x) => x.label), ['1 call', '12345 pieces'], 'a long number is not step numbering');
+  assert.deepEqual(dropNumbering([]), []);
+  const d = buildDiagram(castFor('retail'), 'model-fallback');
+  assert.deepEqual(d.steps.map((s) => s.label), ['request with the key', 'try the first model', 'healthy: answer to the gateway', 'first model down, overloaded or out of budget: try the fallback', 'fallback’s answer to the gateway, within its own budget', 'fallback budget spent too: refuse']);
 });

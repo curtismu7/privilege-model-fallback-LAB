@@ -37,10 +37,10 @@
       "group": "gw",
       "label": "Gateway",
       "sub": [
-        "The key names a second model for when its first cannot answer",
+        "The key names a second model for when its first cannot answer (release notes)",
         "Order of attempts: lab model"
       ],
-      "x": 460,
+      "x": 400,
       "y": 170
     },
     {
@@ -51,7 +51,7 @@
         "The key’s first model",
         "Out of budget counts as failing (release notes)"
       ],
-      "x": 920,
+      "x": 800,
       "y": 0
     },
     {
@@ -62,7 +62,7 @@
         "Can be a different provider",
         "Carries its own budget (release notes)"
       ],
-      "x": 920,
+      "x": 800,
       "y": 170
     },
     {
@@ -73,17 +73,18 @@
         "Both budgets exhausted: lab model",
         "Names which ran out: lab model"
       ],
-      "x": 920,
+      "x": 800,
       "y": 340
     },
     {
-      "id": "answer",
-      "group": "out",
-      "label": "Answer to the app",
+      "id": "ret",
+      "group": "gw",
+      "label": "Gateway returns the answer",
       "sub": [
+        "Back to the app",
         "Names the serving model: lab model"
       ],
-      "x": 1380,
+      "x": 1200,
       "y": 85
     }
   ],
@@ -100,8 +101,8 @@
     },
     {
       "source": "primary",
-      "target": "answer",
-      "label": "3a healthy: answer"
+      "target": "ret",
+      "label": "3a healthy: answer to the gateway"
     },
     {
       "source": "gw",
@@ -111,8 +112,8 @@
     },
     {
       "source": "fallback",
-      "target": "answer",
-      "label": "4 answer, within the fallback’s own budget"
+      "target": "ret",
+      "label": "4 fallback’s answer to the gateway, within its own budget"
     },
     {
       "source": "gw",
@@ -124,7 +125,7 @@
   "steps": [
     {
       "title": "The app calls with its key",
-      "what": "The request reaches the gateway with the LLM key. The key names a second model to answer with if its first cannot.",
+      "what": "The request reaches the gateway with the LLM key. The key names a second model to answer with if its first cannot (release notes).",
       "edges": [
         0
       ]
@@ -138,7 +139,7 @@
     },
     {
       "title": "Healthy first model answers",
-      "what": "When the first model is healthy it answers and no fallback is attempted (lab model). The answer goes back to the app.",
+      "what": "When the first model is healthy it answers and no fallback is attempted (lab model). The answer comes back through the gateway to the app.",
       "why": "Lab model: the trace shows one attempt and names the model that served.",
       "edges": [
         2
@@ -154,7 +155,7 @@
     },
     {
       "title": "Fallback answers",
-      "what": "The fallback model answers. It can be a different provider and carries its own budget, so the agent keeps serving within a known ceiling. Charging its spend to its own budget and not the first model’s is the lab model.",
+      "what": "The fallback model answers through the gateway. It can be a different provider and carries its own budget, so the agent keeps serving within a known ceiling (release notes). Charging its spend to its own budget and not the first model’s is the lab model.",
       "why": "How the answer names the serving model is lab model and UNVERIFIED.",
       "edges": [
         4
@@ -162,7 +163,7 @@
     },
     {
       "title": "Both budgets exhausted",
-      "what": "In the lab model, when the fallback’s budget is spent as well, the call is refused with a named refusal that says which budgets ran out, never a blank page.",
+      "what": "In the lab model, when the fallback’s budget is spent as well, the gateway refuses the call with a named refusal that says which budgets ran out, never a blank page.",
       "why": "Lab model: the refusal wording and shape are the lab’s own and UNVERIFIED against the product.",
       "edges": [
         5

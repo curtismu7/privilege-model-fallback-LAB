@@ -9,6 +9,7 @@ import DiagramPage from "./pages/DiagramPage.jsx";
 import StoriesPage from "./pages/StoriesPage.jsx";
 import LimitsPage from "./pages/LimitsPage.jsx";
 import { visible } from "./safeText";
+import { dialogItems } from "./talk";
 
 export const PAGES = [
   { id: "fallback", label: "Fallback", View: FallbackPage },
@@ -33,6 +34,9 @@ const THEMES = ["auto", "light", "dark"];
 function initialTheme() { try { const v = localStorage.getItem(THEME_KEY); if (THEMES.includes(v)) return v; } catch { /* storage blocked */ } return "auto"; }
 function initialFont() { try { const f = localStorage.getItem(FONT_KEY); return ["S", "M", "L"].includes(f) ? f : "M"; } catch { return "M"; } }
 // "#fallback/<scenario>" opens the Fallback page and runs that scenario: the page is the part before the slash.
+// A key typed into a field is never a shortcut; "P" is not one either when it is aimed at the focused button, link or an editable area.
+export const inField = (t) => !!t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable === true);
+export const inControl = (t) => !!t && (/^(INPUT|TEXTAREA|SELECT|BUTTON|A)$/.test(t.tagName) || t.isContentEditable === true);
 const pageFromHash = () => { const h = window.location.hash.replace("#", "").split("/")[0]; return PAGES.some((p) => p.id === h) ? h : "fallback"; };
 
 export default function App() {
@@ -44,14 +48,15 @@ export default function App() {
   const [fontStep, setFontStep] = useState(initialFont);
   const [resetMsg, setResetMsg] = useState("");
 
+  useEffect(() => { if (lab.epoch > 0) clearScenarioHash(); }, [lab.epoch]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (theme === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = theme; }, [theme]);
   useEffect(() => { applyFontSize(fontStep); try { localStorage.setItem(FONT_KEY, fontStep); } catch { /* not remembered */ } }, [fontStep]);
   useEffect(() => { const on = () => setPage(pageFromHash()); window.addEventListener("hashchange", on); return () => window.removeEventListener("hashchange", on); }, []);
   useEffect(() => {
     const on = (e) => {
-      if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
-      if (e.key === "p" || e.key === "P") setPresenter((v) => !v);
-      else if (e.key === "Escape") setPresenter(false);
+      if (inField(e.target)) return; // typing
+      if (e.key === "Escape") setPresenter(false); // leaves presenter mode even with the Presenter button focused
+      else if ((e.key === "p" || e.key === "P") && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey && !inControl(e.target)) setPresenter((v) => !v); // never Ctrl/Cmd+P (print), a held key or a key aimed at a focused control
     };
     window.addEventListener("keydown", on);
     return () => window.removeEventListener("keydown", on);
@@ -59,7 +64,10 @@ export default function App() {
 
   const pickTheme = (next) => { try { if (next === "auto") localStorage.removeItem(THEME_KEY); else localStorage.setItem(THEME_KEY, next); } catch { /* not remembered */ } setTheme(next); };
   const select = (id) => { setPage(id); try { window.history.replaceState(null, "", `#${id}`); } catch { /* ignore */ } };
+  // A new epoch (Reset, a new vertical, a mode switch) remounts the page; "#fallback/<scenario>" would run that scenario again, so the scenario part goes.
+  const clearScenarioHash = () => { try { if (window.location.hash.includes("/")) window.history.replaceState(null, "", `#${pageFromHash()}`); } catch { /* ignore */ } };
   const reset = async () => {
+    clearScenarioHash();
     const ok = await lab.reset();
     setResetMsg(ok ? "Reset: the key is back to its default chain with empty budgets, the lab clock is at zero, the last run is cleared and the diagram is back in place." : "Reset failed on the server; the view was reloaded.");
   };
@@ -82,7 +90,7 @@ export default function App() {
           {PAGES.map((p) => <a key={p.id} href={`#${p.id}`} aria-current={page === p.id ? "page" : undefined} onClick={(e) => { e.preventDefault(); select(p.id); }}>{p.label}</a>)}
         </nav>
         <TopMenu
-          vertical={{ value: lab.vertical, onChange: lab.setVertical, options: story ? story.verticals.map((v) => v.id) : [lab.vertical] }}
+          vertical={story ? { value: lab.vertical, onChange: lab.setVertical, options: story.verticals.map((v) => v.id) } : undefined}
           theme={{ value: theme, onChange: pickTheme }}
           fontSize={{ value: fontStep, onChange: setFontStep }}
           present={{ active: presenter, onToggle: () => setPresenter((v) => !v), label: "Presenter (P)" }}
@@ -109,7 +117,7 @@ export default function App() {
           {lab.error && !story ? null : !story || !info ? <p className="muted" role="status">Loading...</p> : <View key={`${page}-${lab.epoch}`} lab={lab} />}
         </div>
       </main>
-      <TalkTrackDialog isOpen={talkOpen} onClose={() => setTalkOpen(false)} talk={story?.talkTrack ?? []} />
+      <TalkTrackDialog isOpen={talkOpen} onClose={() => setTalkOpen(false)} talk={dialogItems(story?.talkTrack ?? [])} />
     </div>
   );
 }

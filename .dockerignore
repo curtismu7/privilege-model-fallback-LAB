@@ -5,7 +5,8 @@
 .git
 .github
 .githooks
-docs
+docs/*
+!docs/talk-track.md
 scripts
 CHANGELOG.md
 Dockerfile

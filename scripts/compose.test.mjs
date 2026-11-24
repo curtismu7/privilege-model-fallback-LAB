@@ -80,3 +80,59 @@ test('compose never mounts the Docker socket and passes no log-reader settings',
   assert.doesNotMatch(compose, /docker\.sock/);
   assert.doesNotMatch(compose, /RUN_OBS_/);
 });
+
+// ---- the build context: a COPY of a file .dockerignore excludes fails the image build ("not found"), and only a real build used to show it ----
+// A small .dockerignore matcher (last matching pattern wins, `!` re-includes, `*` stays inside one path segment, `**` crosses them, a pattern that
+// matches a parent directory excludes everything under it). No dependency.
+const globToRegex = (g) => new RegExp(`^${g.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*\*\//g, '\u0000').replace(/\*\*/g, '\u0001').replace(/\*/g, '[^/]*').replace(/\?/g, '[^/]').replace(/\u0000/g, '(?:.*/)?').replace(/\u0001/g, '.*')}$`);
+export function ignored(file, dockerignore) {
+  const parts = file.split('/');
+  const prefixes = parts.map((_, i) => parts.slice(0, i + 1).join('/')); // the file and each parent directory
+  let out = false;
+  for (const raw of dockerignore.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'))) {
+    const neg = raw.startsWith('!');
+    const re = globToRegex(neg ? raw.slice(1) : raw);
+    if (prefixes.some((p) => re.test(p))) out = !neg;
+  }
+  return out;
+}
+// The sources of every COPY that reads the build context (not `--from=<stage>`), with line continuations joined.
+export function contextCopies(dockerfile) {
+  return dockerfile.replace(/\\\n/g, ' ').split('\n').map((l) => l.trim()).filter((l) => /^COPY\s/i.test(l) && !/--from=/i.test(l))
+    .flatMap((l) => l.split(/\s+/).slice(1).filter((t) => !t.startsWith('--')).slice(0, -1));
+}
+
+test('the matcher: last pattern wins, a negation re-includes, a parent directory excludes what is under it', () => {
+  assert.equal(ignored('docs/talk-track.md', 'docs'), true, 'excluding the directory excludes its files');
+  assert.equal(ignored('docs/talk-track.md', 'docs/*'), true);
+  assert.equal(ignored('docs/talk-track.md', 'docs/*\n!docs/talk-track.md'), false);
+  assert.equal(ignored('docs/spec.md', 'docs/*\n!docs/talk-track.md'), true);
+  assert.equal(ignored('web/dist/index.html', '**/dist'), true);
+  assert.equal(ignored('server/src/app.js', '**/node_modules\n**/dist'), false);
+  assert.equal(ignored('a/b/c.js', '*.js'), false, '* does not cross a directory');
+  assert.equal(ignored('c.js', '# comment\n*.js'), true);
+});
+
+test('every COPY from the build context names a file or folder .dockerignore lets through (the image builds)', () => {
+  const dockerignore = here('.dockerignore');
+  const sources = contextCopies(here('Dockerfile'));
+  assert.ok(sources.includes('docs/talk-track.md') && sources.includes('server/src') && sources.length >= 6, `the parser found the COPY sources: ${sources.join(', ')}`);
+  for (const s of sources) {
+    if (s === '.') continue; // the whole context: nothing of its own to exclude
+    assert.equal(ignored(s.replace(/\/$/, ''), dockerignore), false, `COPY ${s} reads a path .dockerignore excludes: the build fails with "not found". Re-include it with a "!" line.`);
+    assert.ok(fs.existsSync(new URL(`../${s}`, import.meta.url)), `COPY ${s}: the path does not exist in the repo`);
+  }
+});
+
+test('the checker would have caught the build failure: the same Dockerfile against a .dockerignore that excludes docs', () => {
+  const broken = here('.dockerignore').replace('!docs/talk-track.md\n', '');
+  assert.ok(contextCopies(here('Dockerfile')).some((s) => ignored(s, broken)), 'COPY docs/talk-track.md is flagged once the re-include line is gone');
+  assert.equal(ignored('docs/talk-track.md', 'docs'), true);
+});
+
+test('customer.config.json is optional and read-only when mounted: the compose file documents the mount and passes CUSTOMER_CONFIG (rule 12)', () => {
+  const compose = here('docker-compose.yml');
+  assert.match(compose, /CUSTOMER_CONFIG: \$\{CUSTOMER_CONFIG:-\}/);
+  assert.match(compose, /#\s+- \.\/customer\.config\.json:\/config\/customer\.config\.json:ro/, 'the optional mount is read-only');
+  assert.match(here('README.md'), /CUSTOMER_CONFIG=\/config\/customer\.config\.json/);
+});

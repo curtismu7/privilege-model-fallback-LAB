@@ -22,18 +22,24 @@ const DOCS = Object.freeze(Object.fromEntries(DIAGRAM_NAMES.map((n) => [n, load(
 export const rawDiagram = (name) => (typeof name === 'string' && Object.hasOwn(DOCS, name) ? DOCS[name] : null);
 export const hasDiagram = (name) => rawDiagram(name) !== null;
 
+// The studio numbers its arrow labels itself ("3b first model down..."). The page numbers the arrows in walk order, so that prefix is dropped, but ONLY
+// when the whole diagram is numbered that way (every label starts with it): a label that merely starts with a number ("3 retries then answer") in a diagram
+// that does not number its labels keeps it.
+const NUMBERING = /^\d{1,2}[a-z]?\s+(?=\S)/;
+export const dropNumbering = (edges) => (edges.length > 0 && edges.every((e) => NUMBERING.test(e.label || '')) ? edges.map((e) => ({ ...e, label: e.label.replace(NUMBERING, '') })) : edges);
+
 // The shape the page reads: { name, title, intro, nodes: [{id, label, kind, x, y}], steps: [{from, to, label, title, say}] } (one step per arrow).
 export function buildDiagram(cast, name) {
   const d = fillDeep(DOCS[name], cast);
+  const edges = dropNumbering(d.edges);
   return {
     name: d.id,
     title: d.title,
     intro: d.lede,
     nodes: d.nodes.map((n) => ({ id: n.id, label: n.label, kind: n.group, x: n.x, y: n.y })),
     steps: d.steps.flatMap((s) => s.edges.map((i) => {
-      const e = d.edges[i];
-      // The data numbers its labels itself ("3b first model down..."); the page numbers the arrows in walk order, so the data's own number is dropped here.
-      return { from: e.source, to: e.target, label: (e.label || s.title).replace(/^\d+[a-z]?\s+/, ''), title: s.title, say: [s.what, s.why].filter(Boolean).join(' ') };
+      const e = edges[i];
+      return { from: e.source, to: e.target, label: e.label || s.title, title: s.title, say: [s.what, s.why].filter(Boolean).join(' ') };
     })),
   };
 }

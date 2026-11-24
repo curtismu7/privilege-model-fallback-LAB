@@ -1,3 +1,3 @@
-# model-fallback.json is a byte copy of MODEL_FALLBACK_FLOW exported from diagram-studio-LAB (core/src/apps.js), branch feat/model-gateway-diagrams, commit f74bd581f425e0a5f48b26d998646e5d9cb0c6f9 (PR #35, open when this was copied).
-# Re-run the export and re-pin after #35 merges: the final vendoring is from diagram-studio main, not from the branch.
-9339a6cf954bf56a2306f7269aca089ab139a6ffa3e9e40c95e33c1faac6968f  model-fallback.json
+# model-fallback.json is a byte copy of MODEL_FALLBACK_FLOW exported from diagram-studio-LAB (core/src/apps.js) at origin/main c662412eac527035cc216f50491cc05b64337037 (PR #35, merged).
+# Re-export from diagram-studio main and re-pin when the studio's diagram changes: never edit the data file here.
+a0a2fc8af414106ed803d75480701e08577e0caa0009896aec9c5a4b9198fe01  model-fallback.json
