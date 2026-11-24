@@ -22,15 +22,14 @@ describe("the configured customer vertical and cast reach the page (the first st
     expect(document.body.textContent).not.toContain("Northwind Retail");
   });
 
-  it("the configured vertical survives Reset and a mode switch; another vertical shows that pack's own words, not the customer's brand", async () => {
+  it("the configured vertical survives Reset; another vertical shows that pack's own words, not the customer's brand", async () => {
     const user = await h.mount({ page: "stories", customer });
     await screen.findByTestId("story-grid");
     await user.click(screen.getByTestId("reset"));
     await waitFor(() => expect(screen.getByTestId("reset-note")).toHaveTextContent(/Reset: the key is back/));
     await screen.findByTestId("story-grid");
     expect(text("stories-for")).toContain("Test Brand Co");
-    await user.click(screen.getByTestId("mode-mock"));
-    await waitFor(() => expect(h.lab.calls.filter((c) => c.path === "/api/story").length).toBeGreaterThan(2));
+    await waitFor(() => expect(h.lab.calls.filter((c) => c.path === "/api/story").length).toBeGreaterThanOrEqual(2));
     expect(h.lab.calls.filter((c) => c.path === "/api/story").slice(1).every((c) => c.search === "?vertical=health")).toBe(true);
     expect(text("stories-for")).toContain("Test Brand Co");
     await user.selectOptions(screen.getByTestId("vertical-select"), "finance");

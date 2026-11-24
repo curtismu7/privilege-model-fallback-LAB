@@ -31,7 +31,7 @@ An LLM key names a second model that answers when the first is down, overloaded 
 9. Doctor passes, one check per scenario; netguard sees zero outbound attempts; the kit pin matches.
 
 ## Unhappy paths (each has a test)
-Prompt empty, over 20000 characters or not a string (4xx); chain empty, over 5, duplicate, unknown provider id, bad model id, budget not a whole number 0 to 1,000,000, timeout outside 100 to 60000 ms; any unknown field (so no credential field can be sent); `__proto__` key; invalid JSON (400), body over 256 KB (413), wrong method (405), unknown route (404), unknown scenario (404); bad Host (421); cross-origin write (403); `real` mode (409); error messages never echo the caller's text.
+Prompt empty, over 20000 characters or not a string (4xx); chain empty, over 5, duplicate, unknown provider id, bad model id, budget not a whole number 0 to 1,000,000, timeout outside 500 to 60000 ms (a healthy call takes 400 ms, so a shorter timeout would be accepted and never fire); any unknown field (so no credential field can be sent); `__proto__` key; invalid JSON (400), body over 256 KB (413), wrong method (405), unknown route (404), unknown scenario (404); bad Host (421); cross-origin write (403); `real` mode (409); error messages never echo the caller's text.
 
 ## UNVERIFIED (model)
 What "overloaded" means; retry before fallback; mid-stream failure; whether the guard re-runs on the fallback's answer; how the response names the serving model; refusal wording and status; token counting. Open question, not modelled and no claim made: whether a gateway's own rate-limit refusal can trigger fallback (owner decision 2026-11-24).

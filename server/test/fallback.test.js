@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createClock } from '../src/model-gateway-sim/labClock.js';
-import { createKey, runFallback, estimateTokens } from '../src/fallback.js';
+import { createKey, runFallback, estimateTokens, LATENCY_MS } from '../src/fallback.js';
+import { LIMITS, validateTimeout } from '../src/validate.js';
 import { DEFAULT_CHAIN, DEFAULT_PROMPT } from '../src/scenarios.js';
 
 const make = (chain = DEFAULT_CHAIN, timeoutMs = 3000) => { const clock = createClock(0); return { clock, key: createKey({ chain: chain.map((e) => ({ ...e })), timeoutMs }, clock) }; };
@@ -186,4 +187,19 @@ test('unknown provider state is refused', () => {
   const m = make();
   assert.throws(() => run(m, ['broken', 'healthy']), (e) => e.code === 'unknown_provider_state');
   assert.throws(() => run(m, ['healthy', 'healthy', 'healthy']), (e) => e.code === 'bad_provider_states');
+});
+
+test('the shortest accepted timeout is longer than a healthy call, so every accepted timeout can fire and none is accepted for nothing', () => {
+  assert.ok(LIMITS.minTimeoutMs > LATENCY_MS, `minTimeoutMs ${LIMITS.minTimeoutMs} must exceed a healthy call's ${LATENCY_MS} ms`);
+  assert.throws(() => validateTimeout(LIMITS.minTimeoutMs - 1), (e) => e.code === 'bad_timeout');
+  assert.equal(validateTimeout(LIMITS.minTimeoutMs), LIMITS.minTimeoutMs);
+  // at the minimum: a healthy primary is served (never a timeout), a slow one (10x latency) times out after exactly the timeout, then the fallback answers
+  for (const [state, want, ms] of [['healthy', 'served', LATENCY_MS], ['slow', 'provider_timeout', LIMITS.minTimeoutMs]]) {
+    const clock = createClock(0);
+    const key = createKey({ chain: DEFAULT_CHAIN.map((e) => ({ ...e })), timeoutMs: LIMITS.minTimeoutMs }, clock);
+    const r = runFallback(key, DEFAULT_PROMPT, clock, { providerStates: [state, 'healthy'] });
+    assert.equal(r.attempts[0].reason, want, state);
+    assert.equal(r.attempts[0].latencyMs, ms, state);
+    assert.equal(r.ok, true);
+  }
 });

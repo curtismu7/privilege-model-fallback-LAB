@@ -42,3 +42,24 @@ test('reset script: refuses a non-loopback host; resets a running lab', async ()
     assert.deepEqual((await lab.get('/api/chain')).json.ledgers.map((l) => l.spent), [0, 0]);
   } finally { await lab.close(); }
 });
+
+test('reset script sends X-Workspace: it clears the named workspace only, defaults to "default", refuses a bad id', async () => {
+  const lab = await startLab();
+  const w = (id) => ({ 'x-workspace': id });
+  try {
+    await lab.send('POST', '/api/run', { prompt: 'hello there' }, w('alpha'));
+    await lab.send('POST', '/api/run', { prompt: 'hello there' }, w('beta'));
+    await lab.send('POST', '/api/run', { prompt: 'hello there' });
+    const r = await reset(lab.base, 'alpha');
+    assert.deepEqual([r.reset, r.workspace], [true, 'alpha']);
+    assert.equal((await lab.get('/api/chain', w('alpha'))).json.clockMs, 0, 'alpha was reset');
+    assert.equal((await lab.get('/api/chain', w('beta'))).json.clockMs, 400, 'beta was not');
+    assert.equal((await lab.get('/api/chain')).json.clockMs, 400, 'default was not');
+    assert.equal((await reset(lab.base)).workspace, 'default');
+    assert.equal((await lab.get('/api/chain')).json.clockMs, 0);
+    process.env.PMF_WORKSPACE = 'beta';
+    try { assert.equal((await reset(lab.base)).workspace, 'beta'); } finally { delete process.env.PMF_WORKSPACE; }
+    assert.equal((await lab.get('/api/chain', w('beta'))).json.clockMs, 0);
+    await assert.rejects(reset(lab.base, 'Bad Id'), /workspace must be/);
+  } finally { await lab.close(); }
+});

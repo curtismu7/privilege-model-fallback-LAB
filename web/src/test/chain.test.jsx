@@ -4,7 +4,7 @@ import { screen, text, useLabHarness, userEvent, waitFor } from "./util.jsx";
 import { fireEvent } from "@testing-library/react";
 
 const h = useLabHarness();
-const LIMITS = { maxChain: 5, maxBudgetTokens: 1000000, minTimeoutMs: 100, maxTimeoutMs: 60000 };
+const LIMITS = { maxChain: 5, maxBudgetTokens: 1000000, minTimeoutMs: 500, maxTimeoutMs: 60000 };
 const LONG = `long-model-name-${"x".repeat(40)}`; // 56 characters; with "-4" 58, inside the 64-character limit
 
 describe("the key form: validation", () => {
@@ -19,7 +19,8 @@ describe("the key form: validation", () => {
     expect(chainProblems([row("a"), row("a", 1, "provider-b")], 3000, LIMITS).any).toBe(false);
     expect(chainProblems([], 3000, LIMITS).top.join()).toMatch(/at least one/);
     expect(chainProblems(Array.from({ length: 6 }, (_, i) => row(`m${i}`)), 3000, LIMITS).top.join()).toMatch(/at most 5/);
-    expect(chainProblems([row("a")], 50, LIMITS).top.join()).toMatch(/Timeout/);
+    expect(chainProblems([row("a")], 499, LIMITS).top.join()).toMatch(/Timeout/);
+    expect(chainProblems([row("a")], 500, LIMITS).any).toBe(false);
   });
 
   it("the chain grows to five models and stops there; Remove keeps at least one", async () => {

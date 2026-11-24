@@ -33,16 +33,17 @@ export default function useLab() {
   }, []);
 
   useEffect(() => { load(undefined); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const setVertical = useCallback((v) => { setVerticalState(v); setEpoch((n) => n + 1); load(v); }, [load]);
+  const setVertical = useCallback((v) => { setVerticalState(v); setModeError(null); setEpoch((n) => n + 1); load(v); }, [load]);
 
   // Rule 19: the server decides. A 409 (Real not available) is shown as the server worded it; nothing else changes.
   const switchMode = useCallback(async (source) => {
+    if (info && source === info.source) return { ok: true }; // already in that mode: nothing changes, nothing is reloaded, the last run stays
     const r = await setMode(source);
     if (!r.ok) { setModeError(r.body?.message || `The mode did not change (HTTP ${r.status})`); return { ok: false, message: r.body?.message }; }
     setModeError(null); setLast(null); setObs(null); setEpoch((n) => n + 1);
     await load(vertical);
     return { ok: true };
-  }, [load, vertical]);
+  }, [info, load, vertical]);
 
   const refreshObs = useCallback(async () => {
     const r = await getObservability();
@@ -76,7 +77,7 @@ export default function useLab() {
 
   const reset = useCallback(async () => {
     const r = await postReset();
-    setLast(null); setObs(null); setEpoch((n) => n + 1);
+    setLast(null); setObs(null); setModeError(null); setEpoch((n) => n + 1);
     await load(vertical);
     return r.ok;
   }, [load, vertical]);

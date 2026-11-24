@@ -48,6 +48,7 @@ export default function App() {
   const [fontStep, setFontStep] = useState(initialFont);
   const [resetMsg, setResetMsg] = useState("");
 
+  useEffect(() => { if (lab.last?.runId) setResetMsg(""); }, [lab.last?.runId]); // the Reset note belongs to the moment of the reset, not to the run after it
   useEffect(() => { if (lab.epoch > 0) clearScenarioHash(); }, [lab.epoch]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (theme === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = theme; }, [theme]);
   useEffect(() => { applyFontSize(fontStep); try { localStorage.setItem(FONT_KEY, fontStep); } catch { /* not remembered */ } }, [fontStep]);

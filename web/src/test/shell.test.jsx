@@ -42,14 +42,6 @@ describe("shell: banner, mode toggle, presenter, talk track, reset", () => {
     expect(posts.map((c) => c.body)).toEqual([{ source: "real" }]);
   });
 
-  it("Mock switches back and all data is loaded again", async () => {
-    const user = await h.mount();
-    const before = h.lab.calls.filter((c) => c.path === "/api/info").length;
-    await user.click(screen.getByTestId("mode-mock"));
-    await waitFor(() => expect(h.lab.calls.filter((c) => c.path === "/api/info").length).toBeGreaterThan(before));
-    expect(h.lab.calls.some((c) => c.path === "/api/mode" && c.body?.source === "mock")).toBe(true);
-  });
-
   it("names a server that is down instead of a blank page, and offers a retry", async () => {
     await h.mount({ overrides: { "/api/info": () => jsonResponse(502, { error: "bad_gateway", message: "The lab server did not answer." }) } }).catch(() => {});
     expect(await screen.findByTestId("load-error")).toHaveTextContent(/Could not load the lab/);

@@ -78,7 +78,10 @@ export default function FallbackPage({ lab }) {
           {scenarios.map((s) => <button key={s.id} type="button" aria-pressed={active === s.id} disabled={lab.busy} onClick={() => runScenario(s.id)} data-testid={`scenario-${s.id}`}>{s.title}</button>)}
         </div>
         {activeScenario ? (
-          <p data-testid="scenario-summary">{visible(activeScenario.summary)}{" "}<button type="button" onClick={() => loadScenarioKey(activeScenario)} data-testid="scenario-load">Load this key into the form</button></p>
+          <p data-testid="scenario-summary">{visible(activeScenario.summary)}{" "}
+            {activeScenario.preSpend.length === 0
+              ? <button type="button" onClick={() => loadScenarioKey(activeScenario)} data-testid="scenario-load">Load this key into the form</button>
+              : <span className="muted" data-testid="scenario-load-note">This scenario starts with budgets already spent ({activeScenario.preSpend.map((p) => `model ${p.position + 1}: ${p.tokens} tokens`).join(", ")}); the form cannot start a key part-spent, so its key is not offered to load.</span>}</p>
         ) : <p className="muted">A scenario runs on a fresh key and a fresh clock and never touches the key below.</p>}
       </section>
 

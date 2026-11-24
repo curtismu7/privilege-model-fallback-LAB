@@ -14,7 +14,8 @@ npm run build      # builds web/dist, which the server serves
 npm start          # http://127.0.0.1:7836/  (loopback only; the API is under /api)
 npm test           # server (node --test test/*.test.js), web (vitest), scripts (node --test scripts/*.test.mjs)
 npm run doctor     # one check per scenario, kit pin, stories and diagram, netguard, an HTTP run of every scenario
-npm run reset      # resets a running lab (default chain, empty ledgers, fresh clock)
+npm run reset      # resets ONE workspace of a running lab: its default chain, empty budgets, clock at zero, last run and run log cleared
+                   # the "default" workspace unless PMF_WORKSPACE=<id> or a second argument names one: node scripts/reset.mjs [base-url] [workspace]
 ./scripts/run.sh   # install if needed, build if needed, doctor, start
 ```
 Docker (OrbStack): `HOST_PORT=7836 docker compose up --build -d`, published on `127.0.0.1` only, non-root, `restart: unless-stopped`, healthcheck on `/api/health`. Branding in Docker: the root file system is read-only, so `customer.config.json` is mounted, not written: copy `customer.config.example.json` to `customer.config.json`, uncomment the `volumes` block in `docker-compose.yml` and set `CUSTOMER_CONFIG=/config/customer.config.json`. Without it the lab runs with its defaults.
