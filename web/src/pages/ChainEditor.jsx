@@ -3,6 +3,8 @@ import { Chip } from "../components/Bits.jsx";
 
 // The key form: an ordered chain of 1 to MAX models (provider, model, budget) and the key's timeout, plus the state the next run gives each model's provider.
 // The client catches the obvious mistakes so the visitor sees them next to the field; the server checks again and has the last word (its message is shown).
+// The server's own model-id pattern (server/src/validate.js), so the form shows the error next to the field.
+export const MODEL_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 export function chainProblems(draft, timeoutMs, limits) {
   const rows = draft.map(() => []);
   const top = [];
@@ -13,6 +15,7 @@ export function chainProblems(draft, timeoutMs, limits) {
     const model = String(e.model ?? "");
     if (!model.trim()) rows[i].push("Model is required.");
     else if (model.length > 64) rows[i].push("Model is at most 64 characters.");
+    else if (!MODEL_ID.test(model)) rows[i].push("Model must be letters, digits, dots, dashes or underscores, starting with a letter or digit.");
     const b = e.budgetTokens;
     if (!Number.isInteger(b) || b < 0 || b > limits.maxBudgetTokens) rows[i].push(`Budget is a whole number from 0 to ${limits.maxBudgetTokens}.`);
     const id = `${e.provider}/${model}`;

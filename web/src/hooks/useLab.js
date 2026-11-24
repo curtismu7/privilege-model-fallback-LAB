@@ -25,15 +25,17 @@ export default function useLab() {
   const load = useCallback(async (v) => {
     const mine = ++seq.current; // a late answer for a vertical or a mode the visitor has left is dropped
     const [i, s] = await Promise.all([getInfo(), getStory(v)]);
-    if (mine !== seq.current) return;
+    if (mine !== seq.current) return false;
     const bad = [i, s].find((r) => !r.ok);
-    if (bad) { setError(say(bad, "Loading the lab")); return; }
+    if (bad) { setError(say(bad, "Loading the lab")); return false; }
     setError(null); setInfo(i.body); setStory(s.body);
-    if (s.body.vertical && s.body.vertical !== v) setVerticalState(s.body.vertical); // the configured vertical wins on the first load
+    setVerticalState(s.body.vertical ?? v ?? null); // the vertical is set only once its story has loaded (the configured one wins on the first load)
+    return true;
   }, []);
 
   useEffect(() => { load(undefined); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const setVertical = useCallback((v) => { setVerticalState(v); setModeError(null); setEpoch((n) => n + 1); load(v); }, [load]);
+  // The picked vertical only changes once its story has loaded: a failed load leaves the old vertical (and the old page) in place, with the load error shown.
+  const setVertical = useCallback(async (v) => { setModeError(null); if (await load(v)) setEpoch((n) => n + 1); }, [load]);
 
   // Rule 19: the server decides. A 409 (Real not available) is shown as the server worded it; nothing else changes.
   const switchMode = useCallback(async (source) => {
@@ -75,6 +77,9 @@ export default function useLab() {
     } finally { setBusy(false); }
   }, [refreshObs]);
 
+  // The server forgot this tab's workspace and made a default one: start the pages over so they read the key and state the server really has.
+  const resync = useCallback(() => { setEpoch((n) => n + 1); }, []);
+
   const reset = useCallback(async () => {
     const r = await postReset();
     setLast(null); setObs(null); setModeError(null); setEpoch((n) => n + 1);
@@ -82,5 +87,5 @@ export default function useLab() {
     return r.ok;
   }, [load, vertical]);
 
-  return { vertical, setVertical, info, story, source: info?.source || null, error, modeError, last, obs, busy, epoch, reload: () => load(vertical), switchMode, runLive, runScenario, reset };
+  return { vertical, setVertical, info, story, source: info?.source || null, error, modeError, last, obs, busy, epoch, reload: () => load(vertical), switchMode, runLive, runScenario, reset, resync };
 }

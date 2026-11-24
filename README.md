@@ -34,7 +34,7 @@ Node 26. Heavy work on the Air: `air-test . -- npm test` (git add new files firs
 Mock only. The header toggle shows Mock pressed and Real disabled with the server's reason. `GET /api/info` reports `source: mock`, `realAvailable: false` with a plain reason; `POST /api/mode {"source":"real"}` answers 409. Real (owner-run, read-only, needs a tenant running the 2026-11-21 release) comes after Mock.
 
 ## Workspaces and branding
-Each browser tab sends `X-Workspace` (default `default`); the key, its budgets, the lab clock, the last run and the run log are per workspace, and Reset clears one. `customer.config.json` (git-ignored; see `customer.config.example.json`) sets the lab's name, tagline, vertical and the five cast words; a bad field falls back to its default with a warning.
+Each browser tab sends `X-Workspace` (default `default`); the key, its budgets, the lab clock, the last run and the run log are per workspace, and Reset clears one. The server answers `X-Workspace-Fresh: 1` when a request had to create the workspace (a restart, or the 21st workspace evicting the oldest); a tab that already used its id then shows "The server forgot this workspace; the lab was reset to its defaults" and reloads the key. `customer.config.json` (git-ignored; see `customer.config.example.json`) sets the lab's name, tagline, vertical and the five cast words; a bad field falls back to its default with a warning.
 
 ## Scenarios
 `GET /api/scenarios`; run one with `POST /api/scenario/:id`: primary-healthy, primary-down, primary-overloaded, primary-out-of-budget, fallback-different-provider, both-budgets-exhausted, both-providers-down, one-model-chain, slow-primary-timeout. Each carries a hand-written expected result, and the UI shows whether the run equals it.

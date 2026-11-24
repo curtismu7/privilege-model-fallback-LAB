@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { chainProblems } from "../pages/ChainEditor.jsx";
+import { chainProblems, MODEL_ID } from "../pages/ChainEditor.jsx";
+import { jsonResponse } from "./harness.js";
 import { screen, text, useLabHarness, userEvent, waitFor } from "./util.jsx";
 import { fireEvent } from "@testing-library/react";
 
@@ -63,11 +64,25 @@ describe("the key form: validation", () => {
     expect(screen.getByTestId("chain-error-0")).toHaveTextContent(/whole number from 0 to 1000000/);
   });
 
-  it("a 400 from the server for a bad chain is shown in full; the saved key is unchanged", async () => {
+  it("the form already refuses a model id the server would refuse (the server's own pattern), next to the field", async () => {
     const user = await h.mount();
     await screen.findByTestId("chain-editor");
-    await user.clear(screen.getByTestId("chain-model-0"));
-    await user.type(screen.getByTestId("chain-model-0"), "bad model!");
+    for (const bad of ["bad model!", "-leading", ".dot", "a/b", "über"]) {
+      expect(MODEL_ID.test(bad), bad).toBe(false);
+      await user.clear(screen.getByTestId("chain-model-0"));
+      await user.type(screen.getByTestId("chain-model-0"), bad);
+      expect(screen.getByTestId("chain-error-0"), bad).toHaveTextContent(/letters, digits, dots, dashes or underscores, starting with a letter or digit/);
+      expect(screen.getByTestId("chain-save")).toBeDisabled();
+    }
+    for (const good of ["a", "model-a.v2_x", "A".repeat(64)]) expect(MODEL_ID.test(good), good).toBe(true);
+    expect(MODEL_ID.test("a".repeat(65))).toBe(false);
+  });
+
+  it("a 400 from the server for a key (a limit the page does not know) is shown in full; the saved key is unchanged", async () => {
+    const overrides = { "/api/chain": (init) => (init.method === "PUT" ? jsonResponse(400, { error: "bad_model", message: "model must be 1 to 64 letters, digits, dots, dashes or underscores" }) : null) };
+    const user = await h.mount({ overrides });
+    await screen.findByTestId("chain-editor");
+    await user.type(screen.getByTestId("chain-model-0"), "x");
     await user.click(screen.getByTestId("chain-save"));
     expect(await screen.findByTestId("chain-save-error")).toHaveTextContent(/The server refused this key: model must be 1 to 64 letters, digits, dots, dashes or underscores/);
     expect((await h.lab.json("/api/chain")).chain[0].model).toBe("model-a-large");

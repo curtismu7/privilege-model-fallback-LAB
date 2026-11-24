@@ -9,6 +9,7 @@ import DiagramPage from "./pages/DiagramPage.jsx";
 import StoriesPage from "./pages/StoriesPage.jsx";
 import LimitsPage from "./pages/LimitsPage.jsx";
 import { visible } from "./safeText";
+import { FORGOTTEN_EVENT } from "./workspace.js";
 import { dialogItems } from "./talk";
 
 export const PAGES = [
@@ -47,7 +48,11 @@ export default function App() {
   const [theme, setTheme] = useState(initialTheme);
   const [fontStep, setFontStep] = useState(initialFont);
   const [resetMsg, setResetMsg] = useState("");
+  const [forgotten, setForgotten] = useState(false);
 
+  // The server forgot this tab's workspace (a restart, or more than 20 workspaces): say so plainly and read the key and state again.
+  const { resync } = lab;
+  useEffect(() => { const on = () => { setForgotten(true); resync(); }; window.addEventListener(FORGOTTEN_EVENT, on); return () => window.removeEventListener(FORGOTTEN_EVENT, on); }, [resync]);
   useEffect(() => { if (lab.last?.runId) setResetMsg(""); }, [lab.last?.runId]); // the Reset note belongs to the moment of the reset, not to the run after it
   useEffect(() => { if (lab.epoch > 0) clearScenarioHash(); }, [lab.epoch]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (theme === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = theme; }, [theme]);
@@ -55,9 +60,9 @@ export default function App() {
   useEffect(() => { const on = () => setPage(pageFromHash()); window.addEventListener("hashchange", on); return () => window.removeEventListener("hashchange", on); }, []);
   useEffect(() => {
     const on = (e) => {
+      if (e.key === "Escape") { setPresenter(false); return; } // leaves presenter mode from anywhere, a field included
       if (inField(e.target)) return; // typing
-      if (e.key === "Escape") setPresenter(false); // leaves presenter mode even with the Presenter button focused
-      else if ((e.key === "p" || e.key === "P") && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey && !inControl(e.target)) setPresenter((v) => !v); // never Ctrl/Cmd+P (print), a held key or a key aimed at a focused control
+      if ((e.key === "p" || e.key === "P") && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey && !inControl(e.target)) setPresenter((v) => !v); // never Ctrl/Cmd+P (print), a held key or a key aimed at a focused control
     };
     window.addEventListener("keydown", on);
     return () => window.removeEventListener("keydown", on);
@@ -69,6 +74,7 @@ export default function App() {
   const clearScenarioHash = () => { try { if (window.location.hash.includes("/")) window.history.replaceState(null, "", `#${pageFromHash()}`); } catch { /* ignore */ } };
   const reset = async () => {
     clearScenarioHash();
+    setForgotten(false);
     const ok = await lab.reset();
     setResetMsg(ok ? "Reset: the key is back to its default chain with empty budgets, the lab clock is at zero, the last run is cleared and the diagram is back in place." : "Reset failed on the server; the view was reloaded.");
   };
@@ -104,6 +110,12 @@ export default function App() {
       </header>
       <main className="page">
         <p className="banner" role="note" data-state={source === "real" ? "live" : "mock"} data-testid="banner">{banner}</p>
+        {forgotten && (
+          <p className="field-error" role="alert" data-testid="workspace-forgotten">
+            The server forgot this workspace; the lab was reset to its defaults.{" "}
+            <button type="button" onClick={() => setForgotten(false)} data-testid="workspace-forgotten-dismiss">Dismiss</button>
+          </p>
+        )}
         {lab.modeError && <p className="field-error" role="alert" data-testid="mode-error-banner">{lab.modeError}</p>}
         {lab.error && (
           <div className="field-error" role="alert" data-testid="load-error">

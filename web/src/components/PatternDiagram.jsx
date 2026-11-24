@@ -15,17 +15,19 @@ const narrow = () => typeof window !== "undefined" && typeof window.matchMedia =
 const HANDLES = [["t", Position.Top], ["b", Position.Bottom], ["l", Position.Left], ["r", Position.Right]];
 
 function Box({ data }) {
-  // Keyboard: the box is a button (Tab to it, Enter or Space opens and closes its details). Moving a box is by mouse or touch only.
-  const key = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); data.toggle?.(); } };
+  // Keyboard: the box's label is a real button (Tab to it, Enter or Space opens and closes its details). The expanded details are its SIBLINGS, not its children, so
+  // their own buttons and inputs keep their own keys (a wrapper that handled every key bubbling up would swallow Enter and Space from Close and Copy link).
+  // Moving a box is by mouse or touch only.
   return (
-    <div className={`pat-node${data.passport ? " dk-open" : ""}`} data-kind={data.kind} data-on={data.on ? "true" : "false"} data-testid={`pat-node-${data.id}`} role="button" tabIndex={0} aria-expanded={!!data.passport} aria-label={`${data.label}: show details`} onKeyDown={key}>
+    <div className={`pat-node${data.passport ? " dk-open" : ""}`} data-kind={data.kind} data-on={data.on ? "true" : "false"} data-testid={`pat-node-${data.id}`}>
       {HANDLES.map(([k, pos]) => (
         <span key={k}>
           <Handle id={`s-${k}`} type="source" position={pos} className="pat-handle" />
           <Handle id={`t-${k}`} type="target" position={pos} className="pat-handle" />
         </span>
       ))}
-      {data.label}
+      <button type="button" className="pat-node__label" aria-expanded={!!data.passport} aria-label={`${data.label}: show details`} data-testid={`pat-label-${data.id}`}
+        onClick={(e) => { e.stopPropagation(); data.toggle?.(); }}>{data.label}</button>
       {data.passport && <Passport p={data.passport} />}
     </div>
   );
@@ -125,7 +127,9 @@ export default function PatternDiagram({ pattern, resetSignal = 0 }) {
   const [stepper, dispatch] = useStepper(pattern.steps.length);
   // The pattern as a graph (boxes and arrows) for the box details; a box's kind is its group.
   const graph = useMemo(() => ({ nodes: pattern.nodes.map((n) => ({ id: n.id, label: n.label, group: n.kind })), edges: pattern.steps.map((st, i) => ({ source: st.from, target: st.to, label: `${i + 1}. ${st.label}` })) }), [pattern]);
-  const [open, setOpen] = useState(() => { const box = new URLSearchParams(window.location.search).get("box"); return box && pattern.nodes.some((n) => n.id === box) ? box : null; }); // a shared link's box
+  const [open, setOpen] = useState(() => { const box = new URLSearchParams(window.location.search).get("box"); return box && pattern.nodes.some((n) => n.id === box) ? box : null; }); // a shared link's box, read once
+  // The link's box is used once: take ?box= out of the address, so Reset, a new vertical or a remount does not open it again.
+  useEffect(() => { try { const u = new URL(window.location.href); if (u.searchParams.has("box")) { u.searchParams.delete("box"); window.history.replaceState(null, "", u.toString()); } } catch { /* ignore */ } }, []);
   const onMove = useCallback((id, p) => setPositions((cur) => ({ ...cur, [id]: { x: p.x, y: p.y } })), []);
   const step = stepper.step >= 0 ? pattern.steps[stepper.step] : null;
   // Reset restores box positions as well as the walkthrough and the view. The page-level Reset raises resetSignal.

@@ -145,6 +145,9 @@ code { overflow-wrap: anywhere; }
 .pat-canvas { --dk-active: var(--focus); --dk-active-text: var(--focus); }
 .react-flow__node.dk-open { width: 320px; }
 .pat-node.dk-open { text-align: left; font-weight: 400; }
+/* The box's label is a button that reads as the box's own text (the box is the visible control). */
+.pat-node .pat-node__label { display: block; width: 100%; min-height: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: inherit; cursor: pointer; box-shadow: none; }
+.pat-node.dk-open .pat-node__label { font-weight: 700; margin-bottom: 6px; }
 @media (max-width: 900px) { .pat-canvas { height: 520px; } }
 @media (max-width: 600px) { .pat-node { font-size: 15px; } .dk-label { font-size: 15px; } .pat-canvas { height: 560px; } .panel, .card { padding: 10px; } }
 

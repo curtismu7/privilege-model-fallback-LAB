@@ -83,7 +83,6 @@ export function createApp({
 
   const api = express.Router();
   api.use('/health', health.router);
-  api.use(express.json({ limit: '256kb' }));
   // Wrong method on a known path: 405 with Allow.
   api.use((req, res, next) => {
     for (const [re, methods] of ROUTE_TABLE) {
@@ -91,8 +90,12 @@ export function createApp({
     }
     next();
   });
+  // The body is parsed only for a method the route accepts: a wrong method with a bad body is a 405, not a 400 about the body.
+  api.use(express.json({ limit: '256kb' }));
   // The workspace of a request (rule 13): a bad X-Workspace is a 400 with a message, never silently the default.
-  const wsOf = (req) => workspaces.get(workspaceFrom(req));
+  // X-Workspace-Fresh says whether this request had to CREATE the workspace (1) or found it (0): a tab that already used its id and now gets 1 knows the server
+  // forgot it (restart, or more than 20 workspaces) and that it is looking at the defaults.
+  const wsOf = (req, res) => { const { ws, created } = workspaces.acquire(workspaceFrom(req)); res.set('X-Workspace-Fresh', created ? '1' : '0'); return ws; };
 
   // Every run, live or scenario, leaves the same things behind: one stdout line per decision, the last-run record for the panel and a log line.
   function recordRun(ws, { kind, scenarioId = null, prompt, result }) {
@@ -123,11 +126,11 @@ export function createApp({
     throw refuse('bad_source', 'source must be "mock" or "real"');
   });
 
-  api.get('/chain', (req, res) => res.json(chainView(wsOf(req))));
-  api.put('/chain', (req, res) => { const ws = wsOf(req); ws.configure(validateConfig(req.body)); res.json(chainView(ws)); });
+  api.get('/chain', (req, res) => res.json(chainView(wsOf(req, res))));
+  api.put('/chain', (req, res) => { const ws = wsOf(req, res); ws.configure(validateConfig(req.body)); res.json(chainView(ws)); });
 
   api.post('/run', (req, res) => {
-    const ws = wsOf(req);
+    const ws = wsOf(req, res);
     onlyKeys(req.body, ['prompt', 'providerStates'], 'the run request');
     validatePrompt(req.body.prompt);
     const key = ws.key();
@@ -138,7 +141,7 @@ export function createApp({
 
   api.get('/scenarios', (_req, res) => res.json({ scenarios: SCENARIOS.map(({ id, title, summary, chain, timeoutMs, providerStates, preSpend, prompt, expect }) => ({ id, title, summary, chain, timeoutMs, providerStates, preSpend, prompt, expect })) }));
   api.post('/scenario/:id', (req, res) => {
-    const ws = wsOf(req);
+    const ws = wsOf(req, res);
     const sc = scenarioById(req.params.id);
     if (!sc) throw refuse('unknown_scenario', 'no scenario with that id', 404);
     const out = runScenario(sc.id);
@@ -163,16 +166,18 @@ export function createApp({
 
   // Rule 27: what the last run of this workspace left behind. null before any run.
   api.get('/run-observability', async (req, res, next) => {
-    try { const ws = wsOf(req); res.json({ record: await buildRunRecord(ws.lastRun, { clock: now }), run: ws.lastRun ? { id: ws.lastRun.id, kind: ws.lastRun.kind, scenarioId: ws.lastRun.scenarioId } : null, streams: STREAMS }); }
+    try { const ws = wsOf(req, res); res.json({ record: await buildRunRecord(ws.lastRun, { clock: now }), run: ws.lastRun ? { id: ws.lastRun.id, kind: ws.lastRun.kind, scenarioId: ws.lastRun.scenarioId } : null, streams: STREAMS }); }
     catch (e) { next(e); }
   });
-  api.get('/log', (req, res) => res.json({ runs: wsOf(req).log }));
+  api.get('/log', (req, res) => res.json({ runs: wsOf(req, res).log }));
 
-  // Reset clears this workspace only (its key, clock, last run and log) and gives its slot back.
+  // Reset clears this workspace only (its key, clock, last run and log) and starts it again fresh: a deliberate reset is not a forgotten workspace (Fresh 0).
   api.post('/reset', (req, res) => {
     const id = workspaceFrom(req);
     workspaces.reset(id);
-    res.json({ reset: true, workspace: id, ...chainView(createLabState()) }); // the defaults, without taking the workspace's slot again
+    const { ws } = workspaces.acquire(id);
+    res.set('X-Workspace-Fresh', '0');
+    res.json({ reset: true, workspace: id, ...chainView(ws) });
   });
 
   api.use((_req, res) => res.status(404).json({ error: 'not_found', message: 'Not found' }));

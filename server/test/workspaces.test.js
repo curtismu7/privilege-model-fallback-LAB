@@ -57,3 +57,44 @@ test('a malformed X-Workspace is a 400 with a message, never silently the defaul
     assert.equal((await lab.send('POST', '/api/reset', {}, { 'x-workspace': 'w5' })).status, 200);
   } finally { await lab.close(); }
 });
+
+test('X-Workspace-Fresh: 1 only when the request had to create the workspace; a reset is deliberate (0); a forgotten workspace comes back as 1', async () => {
+  const lab = await startLab();
+  try {
+    const w = (id) => ({ 'x-workspace': id });
+    assert.equal((await lab.get('/api/chain', w('tab-a'))).headers.get('x-workspace-fresh'), '1', 'the first request of a tab creates it');
+    assert.equal((await lab.get('/api/chain', w('tab-a'))).headers.get('x-workspace-fresh'), '0');
+    assert.equal((await lab.send('POST', '/api/run', { prompt: 'hello there' }, w('tab-a'))).headers.get('x-workspace-fresh'), '0');
+    assert.equal((await lab.send('POST', '/api/reset', {}, w('tab-a'))).headers.get('x-workspace-fresh'), '0');
+    assert.equal((await lab.get('/api/chain', w('tab-a'))).headers.get('x-workspace-fresh'), '0', 'after a reset the workspace exists');
+    assert.equal((await lab.get('/api/info', w('tab-a'))).headers.get('x-workspace-fresh'), null, 'info does not touch a workspace');
+    // more than 20 other workspaces: the least recently used (tab-a) is forgotten, and its next request says so
+    for (let i = 0; i < MAX_WORKSPACES; i++) await lab.get('/api/chain', w(`other-${i}`));
+    await lab.send('PUT', '/api/chain', { chain: chain1 }, w('other-3'));
+    const back = await lab.get('/api/chain', w('tab-a'));
+    assert.equal(back.headers.get('x-workspace-fresh'), '1');
+    assert.equal(back.json.chain.length, 2, 'it is the default key again');
+    assert.equal((await lab.get('/api/chain', w('tab-a'))).headers.get('x-workspace-fresh'), '0');
+    // the default workspace is never evicted and never reported fresh after its first use
+    assert.equal((await lab.get('/api/chain')).headers.get('x-workspace-fresh'), '1');
+    assert.equal((await lab.get('/api/chain')).headers.get('x-workspace-fresh'), '0');
+  } finally { await lab.close(); }
+});
+
+test('the unit: acquire says whether it created, and least recently USED order is kept (a hit moves to the end)', () => {
+  const ws = createWorkspaces({ build: (id) => ({ id }), max: 2 });
+  assert.equal(ws.acquire('a').created, true); assert.equal(ws.acquire('b').created, true);
+  assert.equal(ws.acquire('a').created, false); // a is now the most recent
+  assert.equal(ws.acquire('c').created, true);   // b (least recently used) goes
+  assert.deepEqual(ws.ids(), ['a', 'c']);
+  assert.equal(ws.acquire('b').created, true, 'b was forgotten');
+});
+
+test('a wrong method with a bad body is a 405, not a 400 about the body (the 405 check runs before the body is parsed)', async () => {
+  const lab = await startLab();
+  try {
+    const r = await lab.send('POST', '/api/info', '{not json');
+    assert.deepEqual([r.status, r.json.error], [405, 'method_not_allowed']);
+    assert.equal((await lab.send('POST', '/api/run', '{not json')).json.error, 'bad_json', 'an accepted method still gets the body error');
+  } finally { await lab.close(); }
+});

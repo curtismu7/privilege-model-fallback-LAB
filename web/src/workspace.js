@@ -21,7 +21,26 @@ export function workspaceId() {
   return memo;
 }
 
-export const workspaceFetch = (url, opts = {}) => fetch(url, { ...opts, headers: { "content-type": "application/json", ...(opts.headers || {}), "x-workspace": workspaceId() } });
+// The server answers X-Workspace-Fresh: 1 when it had to CREATE this tab's workspace and 0 when it found it. A tab remembers (sessionStorage) that it already
+// used its id: a 1 after that means the server forgot the workspace (a restart, or more than 20 workspaces), so the page is looking at the defaults, and the
+// app is told through the "pmf:workspace-forgotten" event.
+export const FORGOTTEN_EVENT = "pmf:workspace-forgotten";
+const SEEN = "pmf.workspace.seen";
+const wasSeen = (id) => { try { return window.sessionStorage.getItem(SEEN) === id; } catch { return memoSeen === id; } };
+let memoSeen = null;
+const markSeen = (id) => { memoSeen = id; try { window.sessionStorage.setItem(SEEN, id); } catch { /* blocked */ } };
+export function noteFreshness(fresh) {
+  if (fresh !== "0" && fresh !== "1") return; // a route that does not touch the workspace says nothing
+  const id = workspaceId();
+  if (fresh === "1" && wasSeen(id)) window.dispatchEvent(new CustomEvent(FORGOTTEN_EVENT));
+  markSeen(id);
+}
+
+export const workspaceFetch = async (url, opts = {}) => {
+  const r = await fetch(url, { ...opts, headers: { "content-type": "application/json", ...(opts.headers || {}), "x-workspace": workspaceId() } });
+  try { noteFreshness(r.headers?.get?.("x-workspace-fresh")); } catch { /* never let the note break a call */ }
+  return r;
+};
 
 // For tests: a new tab starts with a new id.
-export function forgetWorkspace() { memo = null; try { window.sessionStorage.removeItem(KEY); } catch { /* blocked */ } }
+export function forgetWorkspace() { memo = null; memoSeen = null; try { window.sessionStorage.removeItem(KEY); window.sessionStorage.removeItem(SEEN); } catch { /* blocked */ } }

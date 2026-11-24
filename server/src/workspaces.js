@@ -25,16 +25,18 @@ export function workspaceFrom(req) {
 export function createWorkspaces({ build, max = MAX_WORKSPACES }) {
   const all = new Map();
   return {
-    get(id = DEFAULT_WORKSPACE) {
+    // The workspace and whether THIS call created it (a tab whose workspace was forgotten gets a new, default one: the caller can tell the page).
+    acquire(id = DEFAULT_WORKSPACE) {
       if (!validWorkspace(id)) throw new WorkspaceError('bad_workspace', 400, 'bad workspace id');
       let ws = all.get(id);
-      if (ws) { all.delete(id); all.set(id, ws); return ws; } // insertion order = recency
+      if (ws) { all.delete(id); all.set(id, ws); return { ws, created: false }; } // least recently USED order: a hit moves it to the end
       const others = [...all.keys()].filter((k) => k !== DEFAULT_WORKSPACE);
       if (id !== DEFAULT_WORKSPACE && others.length >= max) all.delete(others[0]);
       ws = build(id);
       all.set(id, ws);
-      return ws;
+      return { ws, created: true };
     },
+    get(id = DEFAULT_WORKSPACE) { return this.acquire(id).ws; },
     peek: (id = DEFAULT_WORKSPACE) => all.get(id) ?? null,
     ids: () => [...all.keys()],
     // Reset forgets the workspace; it starts fresh on its next use and its slot is free again.

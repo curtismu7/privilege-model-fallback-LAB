@@ -27,3 +27,6 @@ Demo-tier standalone lab, step 2 (engine, API and web UI). Port **7836 PROVISION
 - Shortcut keys ignore Ctrl/Cmd/Alt, held keys and focused controls (Escape still leaves presenter mode).
 - Static scans (the host check, the attribution check) skip `.github/` and the shared attribution script, which name the patterns they search for.
 - Before claiming a port, check running containers and compose files (`docker ps`, the `ap-*` labs use 7839 to 7843), not only the registry.
+- A box or button wrapper only handles keys when `e.target === e.currentTarget`: a wrapper's `onKeyDown` that handles every Enter or Space bubbling up swallows them from the buttons and inputs inside it (the diagram's Close and Copy link). Prefer a real `<button>` for the label and keep the details beside it, not inside a `role=button`.
+- A workspace the server forgot (restart, or more than 20) must not be silent: `X-Workspace-Fresh` tells the tab, which shows a banner and reloads; a deliberate Reset answers 0, so it is never mistaken for a forgotten one.
+- A vitest test that opens a diagram box with `userEvent` mouse clicks throws inside React Flow's d3 drag handler (no `view` on the event): use `fireEvent.click` for mouse clicks there; keyboard through `userEvent` is fine.
