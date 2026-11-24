@@ -1,0 +1,172 @@
+{
+  "schema": "diagram-studio/1",
+  "id": "model-fallback",
+  "title": "LLM Model Fallback: a second model answers",
+  "lede": "An LLM key can name a second model to answer with when its first is down, overloaded or out of budget, including a different provider; the fallback carries its own budget so the agent keeps serving within a known ceiling (release notes). The order of attempts, the answer naming the serving model and the refusal are the lab’s own model.",
+  "groups": {
+    "app": {
+      "label": "Caller",
+      "color": "dark"
+    },
+    "gw": {
+      "label": "Gateway (lab model)",
+      "color": "red"
+    },
+    "models": {
+      "label": "Models",
+      "color": "blue"
+    },
+    "out": {
+      "label": "Result",
+      "color": "grey"
+    }
+  },
+  "nodes": [
+    {
+      "id": "app",
+      "group": "app",
+      "label": "Your app",
+      "sub": [
+        "Calls the gateway with its LLM key"
+      ],
+      "x": 0,
+      "y": 170
+    },
+    {
+      "id": "gw",
+      "group": "gw",
+      "label": "Gateway",
+      "sub": [
+        "The key names a second model for when its first cannot answer",
+        "Order of attempts: lab model"
+      ],
+      "x": 460,
+      "y": 170
+    },
+    {
+      "id": "primary",
+      "group": "models",
+      "label": "Primary model",
+      "sub": [
+        "The key’s first model",
+        "Out of budget counts as failing (release notes)"
+      ],
+      "x": 920,
+      "y": 0
+    },
+    {
+      "id": "fallback",
+      "group": "models",
+      "label": "Fallback model",
+      "sub": [
+        "Can be a different provider",
+        "Carries its own budget (release notes)"
+      ],
+      "x": 920,
+      "y": 170
+    },
+    {
+      "id": "refusal",
+      "group": "out",
+      "label": "Named refusal",
+      "sub": [
+        "Both budgets exhausted: lab model",
+        "Names which ran out: lab model"
+      ],
+      "x": 920,
+      "y": 340
+    },
+    {
+      "id": "answer",
+      "group": "out",
+      "label": "Answer to the app",
+      "sub": [
+        "Names the serving model: lab model"
+      ],
+      "x": 1380,
+      "y": 85
+    }
+  ],
+  "edges": [
+    {
+      "source": "app",
+      "target": "gw",
+      "label": "1 request with the key"
+    },
+    {
+      "source": "gw",
+      "target": "primary",
+      "label": "2 try the first model"
+    },
+    {
+      "source": "primary",
+      "target": "answer",
+      "label": "3a healthy: answer"
+    },
+    {
+      "source": "gw",
+      "target": "fallback",
+      "label": "3b first model down, overloaded or out of budget: try the fallback",
+      "dashed": true
+    },
+    {
+      "source": "fallback",
+      "target": "answer",
+      "label": "4 answer, within the fallback’s own budget"
+    },
+    {
+      "source": "gw",
+      "target": "refusal",
+      "label": "5 fallback budget spent too: refuse",
+      "dashed": true
+    }
+  ],
+  "steps": [
+    {
+      "title": "The app calls with its key",
+      "what": "The request reaches the gateway with the LLM key. The key names a second model to answer with if its first cannot.",
+      "edges": [
+        0
+      ]
+    },
+    {
+      "title": "First model first",
+      "what": "In the lab model the gateway tries the key’s first model first.",
+      "edges": [
+        1
+      ]
+    },
+    {
+      "title": "Healthy first model answers",
+      "what": "When the first model is healthy it answers and no fallback is attempted (lab model). The answer goes back to the app.",
+      "why": "Lab model: the trace shows one attempt and names the model that served.",
+      "edges": [
+        2
+      ]
+    },
+    {
+      "title": "First model cannot answer",
+      "what": "If the first model is down, overloaded or out of budget, the key’s second model answers instead.",
+      "why": "From the release notes: down, overloaded or out of budget. UNVERIFIED: what counts as overloaded, whether a retry comes first, what happens mid-stream, and whether AI Guard runs again on the fallback’s answer.",
+      "edges": [
+        3
+      ]
+    },
+    {
+      "title": "Fallback answers",
+      "what": "The fallback model answers. It can be a different provider and carries its own budget, so the agent keeps serving within a known ceiling. Charging its spend to its own budget and not the first model’s is the lab model.",
+      "why": "How the answer names the serving model is lab model and UNVERIFIED.",
+      "edges": [
+        4
+      ]
+    },
+    {
+      "title": "Both budgets exhausted",
+      "what": "In the lab model, when the fallback’s budget is spent as well, the call is refused with a named refusal that says which budgets ran out, never a blank page.",
+      "why": "Lab model: the refusal wording and shape are the lab’s own and UNVERIFIED against the product.",
+      "edges": [
+        5
+      ]
+    }
+  ]
+}

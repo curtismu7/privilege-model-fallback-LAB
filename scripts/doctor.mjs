@@ -21,8 +21,9 @@ try {
   const { createApp, startHttpServer } = await load('server/src/app.js');
   const { createHealth } = await load('server/src/health.js');
   const { SCENARIOS } = await load('server/src/scenarios.js');
+  const { validateConfig } = await load('server/src/customer.js'); // the doctor never reads the author's own customer.config.json
   const health = createHealth({ demoId: 'doctor', demoName: 'doctor', runChecks: () => [], allPassed: () => true, intervalMs: 3_600_000 });
-  const { server, url } = await startHttpServer({ port: 0, host: '127.0.0.1', app: createApp({ health }) });
+  const { server, url } = await startHttpServer({ port: 0, host: '127.0.0.1', app: createApp({ health, customer: validateConfig({}), log: () => {} }) });
   try {
     const base = url.replace(/\/$/, '');
     const post = async (p, body) => (await fetch(`${base}${p}`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify(body ?? {}) })).json();

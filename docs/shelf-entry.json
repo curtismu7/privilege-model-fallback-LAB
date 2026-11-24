@@ -1,0 +1,22 @@
+{
+  "demos": [
+    {
+      "id": "privilege-model-fallback-lab",
+      "name": "Privilege model fallback LAB",
+      "kind": "Demo",
+      "description": "An LLM key names an ordered chain of models: the second answers when the first is down, overloaded or out of budget, charged on its own budget. Nine scenarios, a named refusal when nothing can answer. Mock only; beyond the release-notes sentence everything is the lab's own model and UNVERIFIED.",
+      "url": "http://localhost:7836",
+      "healthPath": "/api/health",
+      "composeFile": "privilege-model-fallback-LAB/docker-compose.yml",
+      "composeOverlays": [],
+      "pingProducts": [],
+      "notes": "Host-run: ./scripts/run.sh (port 7836, PROVISIONAL and not claimed on the board). Mock needs no tenant and no credentials; Real is not built (the toggle is disabled with the reason). Docker: HOST_PORT=7836 docker compose up --build -d (published on 127.0.0.1 only). catalogId D000 is a placeholder: the owner assigns the real catalog id and the port before the registry entry is made. Repo: curtismu7/privilege-model-fallback-LAB.",
+      "repo": "https://github.com/curtismu7/privilege-model-fallback-LAB",
+      "catalogId": "D000",
+      "alsoCatalogIds": [],
+      "tags": ["pingone-privilege", "agent-controls", "simulated"],
+      "where": "installed",
+      "addedAt": "2026-11-24"
+    }
+  ]
+}

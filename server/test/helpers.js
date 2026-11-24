@@ -1,10 +1,11 @@
 import { createApp, startHttpServer } from '../src/app.js';
 import { createHealth } from '../src/health.js';
+import { validateConfig } from '../src/customer.js';
 
-// A running app on an ephemeral loopback port with a quiet health timer. Returns { base, get, send, close }.
-export async function startLab() {
+// A running app (the default customer config, never the author's own file) on an ephemeral loopback port with a quiet health timer and no stdout lines (pass `log` to capture them). Returns { base, get, send, close }.
+export async function startLab({ log = () => {}, now, distDir, customer } = {}) {
   const health = createHealth({ demoId: 'test', demoName: 'test', runChecks: () => [], allPassed: () => true, intervalMs: 3_600_000 });
-  const { server, url } = await startHttpServer({ port: 0, host: '127.0.0.1', app: createApp({ health }) });
+  const { server, url } = await startHttpServer({ port: 0, host: '127.0.0.1', app: createApp({ health, log, ...(now ? { now } : {}), ...(distDir ? { distDir } : {}), customer: customer ?? validateConfig({}) }) });
   const base = url.replace(/\/$/, '');
   const call = async (method, path, body, headers = {}) => {
     const res = await fetch(`${base}${path}`, {

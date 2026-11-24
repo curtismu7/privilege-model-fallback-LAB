@@ -1,0 +1,8 @@
+{
+  "id": "S07",
+  "scenario": "both-providers-down",
+  "title": "Both models are down: a named refusal",
+  "goal": "For {{castBrand}}, {{castApp}} must be told clearly when nothing can answer, never left with a blank page.",
+  "obstacle": "The primary and the second model both fail.",
+  "control": "The refusal names each model and its status code, so {{castOwner}} can tell a provider outage from a spent budget."
+}

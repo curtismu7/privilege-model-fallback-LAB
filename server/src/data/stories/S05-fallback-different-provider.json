@@ -1,0 +1,8 @@
+{
+  "id": "S05",
+  "scenario": "fallback-different-provider",
+  "title": "The second model is on another provider",
+  "goal": "{{castBrand}} does not want one provider to be a single point of failure for {{castApp}}.",
+  "obstacle": "The primary is down and the second model lives on a different provider.",
+  "control": "The release notes say the fallback can be a different provider. The lab shows the serving provider in the verdict."
+}

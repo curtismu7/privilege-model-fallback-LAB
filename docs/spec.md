@@ -1,6 +1,6 @@
 # privilege-model-fallback-LAB spec
 
-**Status:** step 1 (engine and server API) built; web, Docker, CI, shelf and content pack are later steps. **Owner:** Curtis Muir (decides). **Tier:** Demo (Tier 2: colleagues will present it). Source: the 2026-11-21 vendor release notes, the only source. Everything else is **UNVERIFIED (model)** and the lab says so. Parent spec: `docs/specs/2026-11-24-model-gateway-labs.md` in AI-DEMO-Standalone, "Lab 1".
+**Status:** step 1 (engine and server API) and step 2 (web UI, presenter mode, talk track, content pack, Docker, CI) built; the shelf entry, proxy route, submodule pin and release are step 3 (owner-gated). **Owner:** Curtis Muir (decides). **Tier:** Demo (Tier 2: colleagues will present it). Source: the 2026-11-21 vendor release notes, the only source. Everything else is **UNVERIFIED (model)** and the lab says so. Parent spec: `docs/specs/2026-11-24-model-gateway-labs.md` in AI-DEMO-Standalone, "Lab 1".
 
 ## Goal
 Show an LLM key answering from a second model when its first is down, overloaded or out of budget, within the fallback's own budget, with the serving model named and every attempt traced.
@@ -36,5 +36,8 @@ Prompt empty, over 20000 characters or not a string (4xx); chain empty, over 5, 
 ## UNVERIFIED (model)
 What "overloaded" means; retry before fallback; mid-stream failure; whether the guard re-runs on the fallback's answer; how the response names the serving model; refusal wording and status; token counting. Open question, not modelled and no claim made: whether a gateway's own rate-limit refusal can trigger fallback (owner decision 2026-11-24).
 
+## Web (step 2)
+Pages: Fallback (key form, prompt, nine scenarios, verdict first, attempts table, budget meters, `GatewayTrace`, what this run left behind, raw result through `JsonPane`), Diagram (`model-fallback` by name from diagram-studio data), Stories and talk track (nine stories, three vertical packs, presenter mode), Limits (release-notes sentence versus the lab's model, from the server's own lists). The simulation banner is the first element on every page; the Mock / Real toggle is in the header with Real disabled and the 409's reason. State is per workspace (`X-Workspace`). Additional API: `GET /api/story?vertical=`, `GET /api/diagram?name=`, `GET /api/run-observability`, `GET /api/log`; `POST /run` and `POST /scenario/:id` also return `runId` and `trace`.
+
 ## Out of scope
-Real provider calls, streaming, the web page, Real mode (owner-run, read-only, after Mock), Docker, `ci.yml`, shelf entry, content pack, stories, workspaces per visitor.
+Real provider calls, streaming, Real mode (owner-run, read-only, after Mock), the shelf registry entry, proxy route, submodule pin and release (step 3), Story mode (the guided walk-through), a Postman collection.
