@@ -6,7 +6,7 @@
 
 ## Before you start
 
-You are about to show an LLM key that names a second model. Say first what is sourced and what is not. The only claim taken from the 2026-11-21 release notes is this: a key can name a second model, even on another provider, that answers when the first is down, overloaded or out of budget, and the fallback carries its own budget. Everything else on the screen is this lab's own model and is labelled UNVERIFIED. The banner stays on screen in presenter mode too.
+You are about to show an LLM key that names a second model. Say first what is sourced and what is not. The only claim taken from the 2026-11-21 release notes is this: a key can name a second model, even on another provider, that answers when the first is down, overloaded or out of budget, and the fallback carries its own budget. Everything else on the screen is this lab's own model and is labelled UNVERIFIED. The Mock or Real modal opens first and says the same; close it with Got it.
 
 The story is told for {{castBrand}}, an invented example. The verticals change the words, not the models and not the numbers.
 

@@ -5,7 +5,7 @@
 **Status: step 2 of 3 (web UI, presenter mode, talk track, content pack, Docker).** Step 3 (shelf registry entry, proxy route, submodule pin, release) is the owner's integration step and is not done here.
 
 ## What is simulated
-Everything. Mock model providers (healthy, down, overloaded, timeout, slow), an LLM key with a token ledger per model and a lab clock; no network, nothing leaves the machine (a netguard enforces it). Only one thing is taken from the 2026-11-21 release notes: a key can name a second model, even on another provider, that answers when the first is down, overloaded or out of budget, and the fallback carries its own budget. **Every other behaviour is this lab's own model and UNVERIFIED** against the product (see `docs/spec.md` and the Limits page). Nothing here is verified against the real product. The banner on every page, presenter mode included, says so.
+Everything. Mock model providers (healthy, down, overloaded, timeout, slow), an LLM key with a token ledger per model and a lab clock; no network, nothing leaves the machine (a netguard enforces it). Only one thing is taken from the 2026-11-21 release notes: a key can name a second model, even on another provider, that answers when the first is down, overloaded or out of budget, and the fallback carries its own budget. **Every other behaviour is this lab's own model and UNVERIFIED** against the product (see `docs/spec.md` and the Limits page). Nothing here is verified against the real product. The Mock or Real modal that opens the page says so (once per browser session).
 
 ## Run
 ```sh
