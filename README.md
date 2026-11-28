@@ -24,7 +24,7 @@ Node 26. Heavy work on the Air: `air-test . -- npm test` (git add new files firs
 ## Pages
 - **Fallback**: the key form (a chain of 1 to 5 models: provider, model, budget, and the state the next run gives each provider), a prompt, the nine scenarios, then the result: the verdict first (which model served, or the named refusal), every attempt, a budget meter per model, the trace of every hop (shared `GatewayTrace`) and what the run left behind (below).
 - **Diagram**: `model-fallback`, loaded by name from diagram-studio data: movable boxes, Simulate, Prev/Next, speed, and Reset (also restores the box positions).
-- **Stories and talk track**: nine stories as data with `{{cast}}` tokens and three vertical packs (retail, health, finance), filled for the vertical picked in the header; each opens its scenario. The talk track is `docs/talk-track.md`, one source for the page, the header dialog and presenter mode (`P`).
+- **Stories and talk track**: nine stories as data with `{{cast}}` tokens and four vertical packs (airlines, retail, health, finance; the default is AirGuard Airlines, a fictional airline), filled for the vertical picked in the header; each opens its scenario. The talk track is `docs/talk-track.md`, one source for the page, the header dialog and presenter mode (`P`).
 - **Limits (UNVERIFIED)**: exactly what the release notes say and what is the lab's own model.
 
 ## Port

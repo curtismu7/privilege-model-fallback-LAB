@@ -146,7 +146,7 @@
     {
       "id": "try-both-providers-down",
       "label": "S07: Both models are down: a named refusal",
-      "description": "The refusal names each model and its status code, so the support platform team can tell a provider outage from a spent budget.",
+      "description": "The refusal names each model and its status code, so the guest services platform team can tell a provider outage from a spent budget.",
       "group": "try-it",
       "action": {
         "type": "route",
@@ -257,7 +257,7 @@
     {
       "id": "S07",
       "title": "Both models are down: a named refusal",
-      "say": "The refusal names each model and its status code, so the support platform team can tell a provider outage from a spent budget.",
+      "say": "The refusal names each model and its status code, so the guest services platform team can tell a provider outage from a spent budget.",
       "file": "server/src/data/stories/S07-both-providers-down.json"
     },
     {

@@ -61,7 +61,7 @@ export function runChecks({ env = process.env } = {}) {
   try { validateConfig({ chain: DEFAULT_CHAIN }); add('default-chain', 'pass', 'the default chain passes the same validation as PUT /api/chain'); }
   catch { add('default-chain', 'fail', 'the default chain does not pass validation'); }
 
-  // Stories are data with {{cast}} tokens (rule 10): every token is defined by all three vertical packs, every story names a real scenario and has a talk-track section.
+  // Stories are data with {{cast}} tokens (rule 10): every token is defined by all four vertical packs, every story names a real scenario and has a talk-track section.
   const scan = scanStories(STORIES, undefined, Object.fromEntries(loadTalkTrack().map((t) => [`talk-track ${t.id}`, t])));
   const sectionIds = new Set(loadTalkTrack().map((t) => t.id));
   const lonely = STORIES.filter((st) => !SCENARIOS.some((sc) => sc.id === st.scenario) || !sectionIds.has(st.id)).map((st) => st.id);
