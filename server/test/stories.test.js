@@ -1,14 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { STORIES, scanStories, buildStories } from '../src/stories.js';
-import { VERTICALS, CAST_KEYS, tokensIn, unfilled, castFor } from '../src/cast.js';
+import { VERTICALS, CAST_KEYS, DEFAULT_VERTICAL, tokensIn, unfilled, castFor, verticalFrom } from '../src/cast.js';
+import fs from 'node:fs';
 import { loadTalkTrack, buildTalkTrack } from '../src/talkTrack.js';
 import { validateConfig, castForVertical, loadCustomerConfig, logCustomerWarnings, publicConfig } from '../src/customer.js';
 import { SCENARIOS, runScenario } from '../src/scenarios.js';
 import { startLab } from './helpers.js';
 
-test('three vertical packs define the same cast keys, all plain text', () => {
-  assert.deepEqual(Object.keys(VERTICALS).sort(), ['finance', 'health', 'retail']);
+test('four vertical packs define the same cast keys, all plain text', () => {
+  assert.deepEqual(Object.keys(VERTICALS).sort(), ['airlines', 'finance', 'health', 'retail']);
   for (const v of Object.values(VERTICALS)) {
     assert.deepEqual(Object.keys(v.cast).sort(), [...CAST_KEYS].sort(), v.id);
     for (const [k, t] of Object.entries(v.cast)) assert.ok(typeof t === 'string' && t.length > 0 && !/[<>{}]|:\/\//.test(t), `${v.id}.${k}`);
@@ -24,9 +25,9 @@ test('every token a story or a talk-track section uses is defined by every verti
 
 test('the check does fail on an undefined token and an unfilled one is left visible', () => {
   const bad = scanStories([{ id: 'S99', title: 'x {{castNope}}' }], VERTICALS);
-  assert.match(bad.missing.join(), /S99 uses \{\{castNope\}\} which retail lacks/);
+  assert.match(bad.missing.join(), /S99 uses \{\{castNope\}\} which airlines lacks/);
   assert.deepEqual([...tokensIn({ a: ['{{ castBrand }}', { b: '{{castKey}}' }] })].sort(), ['castBrand', 'castKey']);
-  assert.deepEqual(unfilled({ a: '{{castBrand}} {{nope}}' }, castFor('retail')), ['nope']);
+  assert.deepEqual(unfilled({ a: '{{castBrand}} {{nope}}' }, castFor('airlines')), ['nope']);
 });
 
 test('nine stories, one per scenario, each with its own talk-track section; the story names a scenario that passes its expectation', () => {
@@ -60,13 +61,13 @@ test('customer.config (rule 12): bad fields fall back to defaults with a warning
   assert.equal(ok.config.name, 'Acme Test'); assert.equal(ok.config.cast.castBrand, 'Acme Test'); assert.equal(ok.config.cast.castKey, 'acme-key'); assert.deepEqual(ok.warnings, []);
   const bad = validateConfig({ name: '<script>', vertical: 'mining', cast: { keyName: 'Bad Key!', app: 'see https://evil.example', extra: 'x' }, other: 1 });
   assert.equal(bad.config.name, 'Privilege model fallback LAB');
-  assert.equal(bad.config.vertical, 'retail');
+  assert.equal(bad.config.vertical, 'airlines');
   assert.ok(bad.warnings.length >= 5, bad.warnings.join('; '));
-  assert.deepEqual(validateConfig('nope').config.vertical, 'retail');
+  assert.deepEqual(validateConfig('nope').config.vertical, 'airlines');
   assert.match(loadCustomerConfig({ file: '/nonexistent/customer.config.json', env: {} }).config.name, /fallback LAB/);
   assert.equal(castForVertical(ok, 'finance').vertical, 'finance');
   assert.equal(castForVertical(ok, 'nope'), null);
-  assert.equal(publicConfig(ok).verticals.length, 3);
+  assert.equal(publicConfig(ok).verticals.length, 4);
 });
 
 test('GET /api/story: the vertical picker, the configured brand on its own vertical, a 400 for an unknown vertical', async () => {
@@ -75,7 +76,7 @@ test('GET /api/story: the vertical picker, the configured brand on its own verti
   try {
     const mine = (await lab.get('/api/story')).json;
     assert.equal(mine.vertical, 'health'); assert.equal(mine.cast.castBrand, 'Test Brand Co');
-    assert.equal(mine.stories.length, 9); assert.equal(mine.verticals.length, 3);
+    assert.equal(mine.stories.length, 9); assert.equal(mine.verticals.length, 4);
     assert.ok(mine.talkTrack.every((t) => t.id && t.title && t.say));
     const other = (await lab.get('/api/story?vertical=finance')).json;
     assert.equal(other.cast.castBrand, VERTICALS.finance.cast.castBrand, 'another pack never carries the customer\'s brand');
@@ -103,4 +104,40 @@ test('a bad customer.config field is never silent: each warning is logged at sta
   const good = validateConfig({ tagline: 'Fallback, in plain words' });
   const lab2 = await startLab({ customer: good });
   try { assert.equal((await lab2.get('/api/story')).json.tagline, 'Fallback, in plain words'); } finally { await lab2.close(); }
+});
+
+// Retired names: the earlier airline brands and the other packs' brands must not appear anywhere in the airline run.
+const RETIRED = ['Meridian Air', 'Meridian Journeys', 'Skyline Air', 'Northwind', 'Contoso', 'Fabrikam', 'Tessera Travel', 'Harbor', 'Vellum'];
+const retiredIn = (text) => RETIRED.filter((n) => text.includes(n));
+
+test('the default story is AirGuard Airlines: a fresh run (no config) shows it, an unknown vertical falls back to it, and the older packs still render their own brands', async () => {
+  assert.equal(DEFAULT_VERTICAL, 'airlines');
+  assert.equal(verticalFrom('mining'), 'airlines'); assert.equal(verticalFrom(undefined), 'airlines');
+  assert.equal(VERTICALS.airlines.cast.castBrand, 'AirGuard Airlines');
+  assert.equal(validateConfig({}).config.vertical, 'airlines');
+  assert.equal(validateConfig({ vertical: 'retail' }).config.vertical, 'retail', 'a saved config that says retail keeps working');
+  const lab = await startLab();
+  try {
+    const story = (await lab.get('/api/story')).json;
+    assert.equal(story.vertical, 'airlines'); assert.equal(story.cast.castBrand, 'AirGuard Airlines');
+    assert.deepEqual(story.verticals.map((v) => v.id), ['airlines', 'finance', 'health', 'retail']);
+    for (const [id, brand] of [['retail', 'Northwind Retail'], ['health', 'Contoso Health'], ['finance', 'Fabrikam Bank'], ['airlines', 'AirGuard Airlines']]) {
+      const o = (await lab.get(`/api/story?vertical=${id}`)).json;
+      assert.equal(o.cast.castBrand, brand); assert.ok(JSON.stringify(o.stories).includes(brand), id);
+    }
+  } finally { await lab.close(); }
+});
+
+test('the airline run carries no retired or other-pack brand: stories, talk track, diagram, a run, the example config and the content pack', async () => {
+  const lab = await startLab();
+  try {
+    const seen = { story: (await lab.get('/api/story')).text, diagram: (await lab.get('/api/diagram?name=model-fallback')).text, scenarios: (await lab.get('/api/scenarios')).text, info: (await lab.get('/api/info')).text };
+    const ran = await lab.send('POST', '/api/run', { prompt: 'Summarise the open support cases for this week.', providerStates: ['down'] });
+    seen.run = ran.text;
+    for (const [what, text] of Object.entries(seen)) assert.deepEqual(retiredIn(text), [], what);
+    assert.match(seen.story, /AirGuard Airlines/);
+  } finally { await lab.close(); }
+  assert.deepEqual(retiredIn(JSON.stringify(buildStories(VERTICALS.airlines.cast)) + JSON.stringify(buildTalkTrack(VERTICALS.airlines.cast))), []);
+  assert.deepEqual(retiredIn(JSON.stringify(VERTICALS.airlines)), []);
+  for (const f of ['customer.config.example.json', 'content-pack.json']) assert.deepEqual(retiredIn(fs.readFileSync(new URL(`../../${f}`, import.meta.url), 'utf8')), [], f);
 });

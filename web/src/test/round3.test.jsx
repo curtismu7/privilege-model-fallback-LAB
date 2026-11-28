@@ -80,11 +80,11 @@ describe("a failed vertical load leaves the old vertical in place", () => {
     await screen.findByTestId("story-grid");
     await user.selectOptions(screen.getByTestId("vertical-select"), "finance");
     expect(await screen.findByTestId("load-error")).toHaveTextContent(/the story could not be built/);
-    expect(screen.getByTestId("vertical-select")).toHaveValue("retail");
-    expect(text("stories-for")).toContain("Northwind Retail");
+    expect(screen.getByTestId("vertical-select")).toHaveValue("airlines");
+    expect(text("stories-for")).toContain("AirGuard Airlines");
     await user.click(screen.getByTestId("retry"));
     await waitFor(() => expect(screen.queryByTestId("load-error")).toBeNull());
-    expect(screen.getByTestId("vertical-select")).toHaveValue("retail");
+    expect(screen.getByTestId("vertical-select")).toHaveValue("airlines");
     await user.selectOptions(screen.getByTestId("vertical-select"), "health");
     await waitFor(() => expect(screen.getByTestId("vertical-select")).toHaveValue("health"));
     expect(text("stories-for")).toContain("Contoso Health");
