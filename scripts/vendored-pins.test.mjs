@@ -17,6 +17,7 @@ const GROUPS = [
   { pin: 'web/src/floating-dialog/floating-dialog.sha256', dir: 'web/src/floating-dialog', files: ['FloatingDialog.jsx', 'floating-dialog.css', 'floating-dialog.test.jsx', 'geometry.js', 'useFloatingPanel.js'] },
   { pin: 'web/src/diagram-kit/diagram-kit.sha256', dir: 'web/src/diagram-kit', files: ['DiagramKit.jsx', 'DiagramKit.test.jsx', 'diagram-kit.css', 'diagramKit.js', 'diagramKit.test.js'] },
   { pin: 'web/src/gateway-trace/gateway-trace.sha256', dir: 'web/src/gateway-trace', files: ['GatewayTrace.jsx', 'gateway-trace.css', 'gateway-trace.test.jsx'], server: { 'gatewayTrace.js': 'server/src/gatewayTrace.js' } },
+  { pin: 'web/src/mode-modal/mode-modal.sha256', dir: 'web/src/mode-modal', files: ['ModeModal.jsx', 'mode-modal.css'] },
   { pin: 'web/src/components/JsonPane.sha256', dir: 'web/src/components', files: ['JsonPane.jsx'] },
 ];
 
@@ -46,7 +47,7 @@ test('the shared stylesheet is the pinned copy (the canonical check runs in CI: 
 test('the talk-track dialog is the shared component (no hand-rolled dialog in the app)', () => {
   const dialog = fs.readFileSync(path.join(root, 'web/src/talk-track/TalkTrackDialog.jsx'), 'utf8');
   assert.match(dialog, /FloatingDialog/);
-  for (const f of fs.readdirSync(path.join(root, 'web/src'), { recursive: true }).filter((n) => /\.jsx$/.test(n) && !/(floating-dialog|talk-track|top-menu|diagram-kit)/.test(n))) {
+  for (const f of fs.readdirSync(path.join(root, 'web/src'), { recursive: true }).filter((n) => /\.jsx$/.test(n) && !/(floating-dialog|talk-track|top-menu|diagram-kit|mode-modal)/.test(n))) {
     assert.doesNotMatch(fs.readFileSync(path.join(root, 'web/src', f), 'utf8'), /aria-modal|role=["']dialog["']/, `${f} hand-rolls a dialog`);
   }
 });
